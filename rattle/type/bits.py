@@ -6,6 +6,10 @@ from ..signal import Value
 class Bits(SignalType):
     def __init__(self, width):
         super().__init__()
+        if not isinstance(width, int):
+            raise TypeError('signal width must be an integer')
+        if width < 0:
+            raise ValueError('signal width must be non-negative ')
         self.__width = width
 
     @property

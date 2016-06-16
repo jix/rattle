@@ -24,9 +24,9 @@ class UInt(Int):
 
 class SInt(Int):
     def __init__(self, width):
+        super().__init__(width)
         if width < 1:
             raise ValueError('the width of a signed integer must be positive')
-        super().__init__(width)
 
     @property
     def signed(self):
