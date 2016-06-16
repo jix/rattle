@@ -237,6 +237,24 @@ class Value(Signal):
             Flip(self.signal_type), expr.Flip(self),
             allow_read=allow_read, allow_assign=allow_assign)
 
+    @classmethod
+    def _auto_concat_lvalue(cls, signals, *args, **kwds):
+        module = context.current().module
+        allow_read = all(
+            signal.rmodule._allow_access_from(module) for signal in signals)
+        allow_assign = all(
+            signal.lmodule._allow_access_from(module) for signal in signals)
+
+        if not allow_read and not allow_assign:
+            # TODO More specific error messages
+            raise InvalidSignalAccess(
+                "concatenation of signals not accessible together "
+                "from module %r" % module)
+
+        return Value(
+            *args, **kwds,
+            allow_read=allow_read, allow_assign=allow_assign)
+
 
 class ConstantsClass:
     @staticmethod
