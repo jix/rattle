@@ -65,7 +65,7 @@ class Signal(metaclass=abc.ABCMeta):
         return self.__lmodule
 
     def __repr__(self):
-        return "%s(%r)" % (type(self).__name__, self.signal_type)
+        return "Signal(%r)" % (self.signal_type)
 
     def _access_read(self):
         module = context.current().module
