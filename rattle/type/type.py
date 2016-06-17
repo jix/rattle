@@ -23,6 +23,7 @@ class SignalType(metaclass=SignalMeta):
 
     def convert(self, signal_or_const):
         if isinstance(signal_or_const, Signal):
+            # TODO Skip conversion if already correct signal type
             signal = signal_or_const
             result = signal._convert(self)
             if result is NotImplemented:
@@ -51,6 +52,7 @@ class SignalType(metaclass=SignalMeta):
     @classmethod
     def generic_convert(cls, signal_or_const):
         if isinstance(signal_or_const, Signal):
+            # TODO Skip conversion if already correct signal type
             signal = signal_or_const
             result = signal._generic_convert(cls)
             if result is NotImplemented:

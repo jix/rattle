@@ -17,7 +17,7 @@ class Bits(SignalType):
         return self.__width
 
     def __repr__(self):
-        return "Bits(%r)" % self.width
+        return "%s(%r)" % (type(self).__name__, self.width)
 
     @classmethod
     def concat(cls, *signals):
