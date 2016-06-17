@@ -141,6 +141,22 @@ class Signal(metaclass=abc.ABCMeta):
         else:
             return super().__getitem__(key)
 
+    def _convert(self, signal_type):
+        # pylint: disable=no-self-use
+        return NotImplemented
+
+    def _generic_convert(self, signal_type_class):
+        # pylint: disable=no-self-use
+        return NotImplemented
+
+    def _const_signal(self, signal_type):
+        # pylint: disable=no-self-use
+        return NotImplemented
+
+    def _generic_const_signal(self, signal_type_class):
+        # pylint: disable=no-self-use
+        return NotImplemented
+
 
 class Wire(Signal):
     def __init__(self, signal_type):
@@ -279,7 +295,6 @@ class Const(Signal):
             module=Constants,
             lmodule=NotAccessible,
             rmodule=Constants)
-        # TODO Let the type check/normalize the value
         self.__value = value
 
     @property

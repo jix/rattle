@@ -12,3 +12,7 @@ class InvalidSignalAssignment(InvalidSignalAccess):
 
 class InvalidSignalRead(InvalidSignalAccess):
     pass
+
+
+class ConversionNotImplemented(NotImplementedError):
+    pass
