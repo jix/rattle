@@ -34,15 +34,15 @@ class SignalType(metaclass=SignalMeta):
     def __hash__(self):
         return hash(self._signature_tuple)
 
-    def convert(self, signal_or_const):
+    def convert(self, signal_or_const, *, implicit=False):
         if isinstance(signal_or_const, Signal):
             signal = signal_or_const
             if signal.signal_type == self:
                 # This is equality and not subtyping to avoid variance issues
                 return signal
-            result = signal._convert(self)
+            result = signal._convert(self, implicit=implicit)
             if result is NotImplemented:
-                result = self._convert(signal)
+                result = self._convert(signal, implicit=implicit)
             if result is NotImplemented:
                 raise ConversionNotImplemented(
                     "conversion from %r to %r not supported" %
@@ -65,15 +65,15 @@ class SignalType(metaclass=SignalMeta):
             return result
 
     @classmethod
-    def generic_convert(cls, signal_or_const):
+    def generic_convert(cls, signal_or_const, *, implicit=False):
         if isinstance(signal_or_const, Signal):
             signal = signal_or_const
             if signal.signal_type.__class__ == cls:
                 # This is equality and not subtyping to avoid variance issues
                 return signal
-            result = signal._generic_convert(cls)
+            result = signal._generic_convert(cls, implicit=implicit)
             if result is NotImplemented:
-                result = cls._generic_convert(signal)
+                result = cls._generic_convert(signal, implicit=implicit)
             if result is NotImplemented:
                 raise ConversionNotImplemented(
                     "conversion from %r to %s not supported" %
@@ -95,12 +95,13 @@ class SignalType(metaclass=SignalMeta):
                     (type(const).__name__, cls.__name__))
             return result
 
-    def _convert(self, signal):
-        # pylint: disable=no-self-use
+    def _convert(self, signal, *, implicit):
+        # pylint: disable=no-self-use, unused-variable
         return NotImplemented
 
     @classmethod
-    def _generic_convert(cls, signal):
+    def _generic_convert(cls, signal, *, implicit):
+        # pylint: disable=unused-variable
         return NotImplemented
 
     def _const_signal(self, value):

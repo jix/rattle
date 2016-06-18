@@ -141,12 +141,12 @@ class Signal(metaclass=abc.ABCMeta):
         else:
             return super().__getitem__(key)
 
-    def _convert(self, signal_type):
-        # pylint: disable=no-self-use
+    def _convert(self, signal_type, *, implicit):
+        # pylint: disable=no-self-use, unused-variable
         return NotImplemented
 
-    def _generic_convert(self, signal_type_class):
-        # pylint: disable=no-self-use
+    def _generic_convert(self, signal_type_class, *, implicit):
+        # pylint: disable=no-self-use, unused-variable
         return NotImplemented
 
     def _const_signal(self, signal_type):
