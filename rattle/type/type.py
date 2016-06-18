@@ -21,6 +21,19 @@ class SignalType(metaclass=SignalMeta):
     def const_mixin(self):
         return self.signal_mixin
 
+    @abc.abstractproperty
+    def _signature_tuple(self):
+        pass
+
+    def __eq__(self, other):
+        return self is other or self._signature_tuple == other._signature_tuple
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __hash__(self):
+        return hash(self._signature_tuple)
+
     def convert(self, signal_or_const):
         if isinstance(signal_or_const, Signal):
             # TODO Skip conversion if already correct signal type

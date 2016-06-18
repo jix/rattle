@@ -20,6 +20,10 @@ class Flip(SignalType):
     def __repr__(self):
         return "Flip(%r)" % self.unflipped
 
+    @property
+    def _signature_tuple(self):
+        return (type(self), self.unflipped)
+
 
 class FlipMixin(SignalMixin):
     # TODO Implement flipping of assignments

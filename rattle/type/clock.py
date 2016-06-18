@@ -6,5 +6,9 @@ class ClockType(SignalType):
     def __repr__(self):
         return "Clock"
 
+    @property
+    def _signature_tuple(self):
+        return (type(self),)
+
 Clock = ClockType()
 ClockType.__new__ = lambda cls: Clock

@@ -19,6 +19,10 @@ class Bits(SignalType):
     def __repr__(self):
         return "%s(%r)" % (type(self).__name__, self.width)
 
+    @property
+    def _signature_tuple(self):
+        return (type(self), self.width)
+
     @classmethod
     def concat(cls, *signals):
         # TODO Document lsb first order

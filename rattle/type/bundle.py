@@ -19,6 +19,12 @@ class Bundle(SignalType):
         return "Bundle(%s)" % ', '.join(
             "%s=%r" % item for item in self.signals.items())
 
+    @property
+    def _signature_tuple(self):
+        return (
+            type(self),
+            tuple((key, signal) for key, signal in self.signals.items()))
+
 
 class BundleMixin(SignalMixin):
     def __getitem__(self, key):
