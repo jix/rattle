@@ -45,8 +45,9 @@ class SignalType(metaclass=SignalMeta):
                 result = self._convert(signal, implicit=implicit)
             if result is NotImplemented:
                 raise ConversionNotImplemented(
-                    "conversion from %r to %r not supported" %
-                    (signal.signal_type, self))
+                    "%sconversion from %r to %r not supported" % (
+                        "implicit " if implicit else "",
+                        signal.signal_type, self))
             return result
         else:
             const = signal_or_const
@@ -60,8 +61,9 @@ class SignalType(metaclass=SignalMeta):
                 result = self._const_signal(const)
             if result is NotImplemented:
                 raise ConversionNotImplemented(
-                    "conversion from %s to %r not supported" %
-                    (type(const).__name__, self))
+                    "%sconversion from %s to %r not supported" % (
+                        "implicit " if implicit else "",
+                        type(const).__name__, self))
             return result
 
     @classmethod
@@ -76,8 +78,9 @@ class SignalType(metaclass=SignalMeta):
                 result = cls._generic_convert(signal, implicit=implicit)
             if result is NotImplemented:
                 raise ConversionNotImplemented(
-                    "conversion from %r to %s not supported" %
-                    (signal.signal_type, cls.__name__))
+                    "%sconversion from %r to %s not supported" % (
+                        "implicit " if implicit else "",
+                        signal.signal_type, cls.__name__))
             return result
         else:
             const = signal_or_const
@@ -91,8 +94,9 @@ class SignalType(metaclass=SignalMeta):
                 result = cls._generic_const_signal(const)
             if result is NotImplemented:
                 raise ConversionNotImplemented(
-                    "conversion from %s to %s not supported" %
-                    (type(const).__name__, cls.__name__))
+                    "%sconversion from %s to %s not supported" % (
+                        "implicit " if implicit else "",
+                        type(const).__name__, cls.__name__))
             return result
 
     def _convert(self, signal, *, implicit):
