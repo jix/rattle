@@ -29,3 +29,16 @@ def pow2down(x):
         raise ValueError('there is no power of two below 1')
     else:
         return 1 << log2down(x)
+
+
+def bitmask(high, low=None):
+    if low is None:
+        return (1 << high) - 1
+    else:
+        return bitmask(high) ^ bitmask(low)
+
+
+def signext(bits, value):
+    value &= bitmask(bits)
+    sign_mask = 1 << (bits - 1)
+    return (value ^ sign_mask) - sign_mask

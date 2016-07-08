@@ -1,6 +1,8 @@
 from .type import *
 from .. import expr
 from ..signal import Value, Const
+from ..error import ConversionNotImplemented
+from ..bitmath import signext
 
 
 class Bits(SignalType):
@@ -71,10 +73,18 @@ class BitsMixin(SignalMixin):
         else:
             return Bits(width - self.width)[0] @ self
 
+    def as_uint(self):
+        from .int import UInt
+        return self._auto_lvalue(UInt(self.width), expr.Nop(self))
+
+    def as_sint(self):
+        from .int import SInt
+        return self._auto_lvalue(SInt(self.width), expr.Nop(self))
+
 Bits.signal_mixin = BitsMixin
 
 
-class BitsConstMixin(BitsMixin, Const):
+class BitsConstMixin(Const, BitsMixin):
     def extend(self, width):
         if not isinstance(width, int):
             raise TypeError('signal width must be an integer')
@@ -84,5 +94,13 @@ class BitsConstMixin(BitsMixin, Const):
             return self
         else:
             return Const(self.signal_type.__class__(width), self.value)
+
+    def as_uint(self):
+        from .int import UInt
+        return UInt(self.width)[self.value]
+
+    def as_sint(self):
+        from .int import SInt
+        return SInt(self.width)[signext(self.width, self.value)]
 
 Bits.const_mixin = BitsConstMixin
