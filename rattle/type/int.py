@@ -5,7 +5,7 @@ from .bits import *
 from ..bitmath import bitmask
 
 
-class Int(Bits, metaclass=SignalMeta):
+class Int(BitsLike, metaclass=SignalMeta):
     @abc.abstractproperty
     def signed(self):
         pass
@@ -21,7 +21,7 @@ class Int(Bits, metaclass=SignalMeta):
             return super()._generic_const_signal(value)
 
 
-class IntMixin(BitsMixin):
+class IntMixin(BitsLikeMixin):
     def _convert(self, signal_type, *, implicit):
         if signal_type.__class__ == Bits:
             if signal_type.width >= self.width:
@@ -39,7 +39,7 @@ class IntMixin(BitsMixin):
 Int.signal_mixin = IntMixin
 
 
-class IntConstMixin(BitsConstMixin, IntMixin):
+class IntConstMixin(BitsLikeConstMixin, IntMixin):
     def as_bits(self):
         return Bits(self.width)[self.value & bitmask(self.width)]
 
@@ -96,6 +96,9 @@ class UIntConstMixin(IntConstMixin, UIntMixin):
     def as_sint(self):
         return SInt(self.width + 1)[self.value]
 
+    def extend(self, width):
+        return Const(UInt(width), super().extend(width).value)
+
 UInt.const_mixin = UIntConstMixin
 
 
@@ -145,14 +148,11 @@ class SIntMixin(IntMixin):
             # TODO Implement when slicing and bit broadcasting are there
             raise NotImplementedError()
 
-    def as_uint(self):
-        raise ConversionNotImplemented(
-            'signed to unsigned conversion is not value preserving')
-
 SInt.signal_mixin = SIntMixin
 
 
 class SIntConstMixin(IntConstMixin, SIntMixin):
-    pass
+    def extend(self, width):
+        return Const(SInt(width), super().extend(width).value)
 
 SInt.const_mixin = SIntConstMixin

@@ -159,13 +159,6 @@ def test_uint_to_sint_invalid_truncate(self):
 
 @raises(ConversionNotImplemented)
 @construct_as_module
-def test_invalid_sint_to_uint_generic_by_method(self):
-    self.sint_signal = Wire(SInt(8))
-    self.uint_signal = self.sint_signal.as_uint()
-
-
-@raises(ConversionNotImplemented)
-@construct_as_module
 def test_invalid_sint_to_uint_generic(self):
     self.sint_signal = Wire(SInt(8))
     self.uint_signal = UInt[self.sint_signal]

@@ -5,7 +5,7 @@ from ..error import ConversionNotImplemented
 from ..bitmath import signext
 
 
-class Bits(SignalType):
+class BitsLike(SignalType, metaclass=SignalMeta):
     def __init__(self, width):
         super().__init__()
         if not isinstance(width, int):
@@ -51,7 +51,7 @@ class Bits(SignalType):
             return super()._const_signal(value)
 
 
-class BitsMixin(SignalMixin):
+class BitsLikeMixin(SignalMixin):
     @property
     def width(self):
         return self.signal_type.width
@@ -73,6 +73,28 @@ class BitsMixin(SignalMixin):
         else:
             return Bits(width - self.width)[0] @ self
 
+BitsLike.signal_mixin = BitsLikeMixin
+
+
+class BitsLikeConstMixin(Const, BitsLikeMixin):
+    def extend(self, width):
+        if not isinstance(width, int):
+            raise TypeError('signal width must be an integer')
+        if width < self.width:
+            raise ValueError('extended width less than input width')
+        elif width == self.width:
+            return self
+        else:
+            return Const(Bits(width), self.value)
+
+BitsLike.const_mixin = BitsLikeConstMixin
+
+
+class Bits(BitsLike):
+    pass
+
+
+class BitsMixin(BitsLikeMixin):
     def as_uint(self):
         from .int import UInt
         return self._auto_lvalue(UInt(self.width), expr.Nop(self))
@@ -84,17 +106,7 @@ class BitsMixin(SignalMixin):
 Bits.signal_mixin = BitsMixin
 
 
-class BitsConstMixin(Const, BitsMixin):
-    def extend(self, width):
-        if not isinstance(width, int):
-            raise TypeError('signal width must be an integer')
-        if width < self.width:
-            raise ValueError('extended width less than input width')
-        elif width == self.width:
-            return self
-        else:
-            return Const(self.signal_type.__class__(width), self.value)
-
+class BitsConstMixin(BitsLikeConstMixin, BitsMixin):
     def as_uint(self):
         from .int import UInt
         return UInt(self.width)[self.value]
