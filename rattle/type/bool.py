@@ -1,5 +1,7 @@
 from .type import *
-from ..signal import Const
+
+from .. import expr
+from ..signal import Value, Const
 
 
 class BoolType(SignalType):
@@ -19,12 +21,15 @@ BoolType.__new__ = lambda cls: Bool
 
 
 class BoolMixin(SignalMixin):
-    pass
+    def __invert__(self):
+        self._access_read()
+        return Value(Bool, expr.Not(self))
 
 BoolType.signal_mixin = BoolMixin
 
 
 class BoolConstMixin(Const, BoolMixin):
-    pass
+    def __invert__(self):
+        return Const(Bool, not self.value)
 
 BoolType.const_mixin = BoolConstMixin
