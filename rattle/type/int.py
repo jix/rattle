@@ -85,8 +85,9 @@ class UIntMixin(IntMixin):
     def as_sint(self):
         return self.extend(self.width + 1).as_bits().as_sint()
 
-    def extend(self, width):
-        return UInt[super().extend(width)]
+    def _extend_unchecked(self, width):
+        self._access_read()
+        return Value(UInt(width), expr.ZeroExt(width, self))
 
 
 UInt.signal_mixin = UIntMixin
@@ -96,8 +97,8 @@ class UIntConstMixin(IntConstMixin, UIntMixin):
     def as_sint(self):
         return SInt(self.width + 1)[self.value]
 
-    def extend(self, width):
-        return Const(UInt(width), super().extend(width).value)
+    def _extend_unchecked(self, width):
+        return Const(UInt(width), self.value)
 
 UInt.const_mixin = UIntConstMixin
 
@@ -137,22 +138,15 @@ class SInt(Int):
 
 
 class SIntMixin(IntMixin):
-    def extend(self, width):
-        if not isinstance(width, int):
-            raise TypeError('signal width must be an integer')
-        if width < self.width:
-            raise ValueError('extended width less than input width')
-        elif width == self.width:
-            return self
-        else:
-            # TODO Implement when slicing and bit broadcasting are there
-            raise NotImplementedError()
+    def _extend_unchecked(self, width):
+        self._access_read()
+        return Value(SInt(width), expr.SignExt(width, self))
 
 SInt.signal_mixin = SIntMixin
 
 
 class SIntConstMixin(IntConstMixin, SIntMixin):
-    def extend(self, width):
-        return Const(SInt(width), super().extend(width).value)
+    def _extend_unchecked(self, width):
+        return Const(SInt(width), self.value)
 
 SInt.const_mixin = SIntConstMixin

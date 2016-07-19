@@ -71,21 +71,19 @@ class BitsLikeMixin(SignalMixin):
         elif width == self.width:
             return self
         else:
-            return Bits(width - self.width)[0] @ self
+            return self._extend_unchecked(width)
+
+    def _extend_unchecked(self, width):
+        self._access_read()
+        return Value(Bits(width), expr.ZeroExt(width, self))
+
 
 BitsLike.signal_mixin = BitsLikeMixin
 
 
 class BitsLikeConstMixin(Const, BitsLikeMixin):
-    def extend(self, width):
-        if not isinstance(width, int):
-            raise TypeError('signal width must be an integer')
-        if width < self.width:
-            raise ValueError('extended width less than input width')
-        elif width == self.width:
-            return self
-        else:
-            return Const(Bits(width), self.value)
+    def _extend_unchecked(self, width):
+        return Const(Bits(width), self.value)
 
 BitsLike.const_mixin = BitsLikeConstMixin
 

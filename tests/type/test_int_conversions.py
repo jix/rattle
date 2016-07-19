@@ -92,10 +92,9 @@ def test_uint_to_bits_extending(module):
 
 
 def test_sint_to_bits_extending(module):
-    with raises(NotImplementedError):  # TODO Test when implementation is ready
-        module.sint_signal = Wire(SInt(8))
-        module.bits_signal = Bits(16)[module.sint_signal]
-        assert module.bits_signal.signal_type == Bits(16)
+    module.sint_signal = Wire(SInt(8))
+    module.bits_signal = Bits(16)[module.sint_signal]
+    assert module.bits_signal.signal_type == Bits(16)
 
 
 def test_uint_to_bits_invalid_truncate(module):
