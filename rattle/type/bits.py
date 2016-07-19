@@ -2,7 +2,7 @@ from .type import *
 from .. import expr
 from ..signal import Value, Const
 from ..error import ConversionNotImplemented
-from ..bitmath import signext
+from ..bitmath import signext, bitmask
 
 
 class BitsLike(SignalType, metaclass=SignalMeta):
@@ -63,6 +63,47 @@ class BitsLikeMixin(SignalMixin):
         # TODO Document msb first order for @ operator
         return Bits.concat(other, self)
 
+    def __invert__(self):
+        self._access_read()
+        return Value(self.signal_type, expr.Not(self))
+
+    def _binary_bitop(self, other, op, const_op):
+        generic_type = type(self.signal_type)
+        try:
+            other = self.signal_type.convert(other, implicit=True)
+        except ConversionNotImplemented:
+            try:
+                other = generic_type.generic_convert(other, implicit=True)
+            except ConversionNotImplemented:
+                return NotImplemented
+        width = max(self.width, other.width)
+        a = self.extend(width)
+        b = other.extend(width)
+        a._access_read()
+        b._access_read()
+        if isinstance(a, Const) and isinstance(b, Const):
+            return generic_type(width)[const_op(a.value, b.value)]
+        else:
+            return Value(generic_type(width), op(a, b))
+
+    def __and__(self, other):
+        return self._binary_bitop(other, expr.And, lambda a, b: a & b)
+
+    def __rand__(self, other):
+        return self.__and__(other)
+
+    def __or__(self, other):
+        return self._binary_bitop(other, expr.Or, lambda a, b: a | b)
+
+    def __ror__(self, other):
+        return self.__or__(other)
+
+    def __xor__(self, other):
+        return self._binary_bitop(other, expr.Xor, lambda a, b: a ^ b)
+
+    def __rxor__(self, other):
+        return self.__xor__(other)
+
     def extend(self, width):
         if not isinstance(width, int):
             raise TypeError('signal width must be an integer')
@@ -84,6 +125,9 @@ BitsLike.signal_mixin = BitsLikeMixin
 class BitsLikeConstMixin(Const, BitsLikeMixin):
     def _extend_unchecked(self, width):
         return Const(Bits(width), self.value)
+
+    def __invert__(self):
+        return Const(self.signal_type, (~self.value) & bitmask(self.width))
 
 BitsLike.const_mixin = BitsLikeConstMixin
 

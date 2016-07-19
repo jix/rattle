@@ -149,4 +149,7 @@ class SIntConstMixin(IntConstMixin, SIntMixin):
     def _extend_unchecked(self, width):
         return Const(SInt(width), self.value)
 
+    def __invert__(self):
+        return Const(self.signal_type, ~self.value)
+
 SInt.const_mixin = SIntConstMixin
