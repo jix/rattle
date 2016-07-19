@@ -128,7 +128,7 @@ class Signal(metaclass=abc.ABCMeta):
                     "accessed from %r" %
                     (self.lmodule, self.rmodule, module))
 
-        return Value(
+        return Value._auto(
             *args, **kwds,
             allow_read=allow_read, allow_assign=allow_assign)
 
@@ -249,12 +249,12 @@ class Value(Signal):
                     "signal accessible only from modules %r and %r "
                     "accessed from %r" %
                     (self.lmodule, self.rmodule, module))
-        return Value(
+        return Value._auto(
             Flip(self.signal_type), expr.Flip(self),
             allow_read=allow_read, allow_assign=allow_assign)
 
-    @classmethod
-    def _auto_concat_lvalue(cls, signals, *args, **kwds):
+    @staticmethod
+    def _auto_concat_lvalue(signals, *args, **kwds):
         module = context.current().module
         allow_read = all(
             signal.rmodule._allow_access_from(module) for signal in signals)
@@ -267,8 +267,25 @@ class Value(Signal):
                 "concatenation of signals not accessible together "
                 "from module %r" % module)
 
-        return Value(
+        return Value._auto(
             *args, **kwds,
+            allow_read=allow_read, allow_assign=allow_assign)
+
+    @staticmethod
+    def _auto(
+            signal_type, value_expr, *,
+            allow_read=True, allow_assign=False):
+        fn = value_expr.eval_fn_name
+        try:
+            fn = getattr(signal_type, fn)
+        except AttributeError:
+            pass
+        else:
+            result = fn(*value_expr)
+            if result is not None:
+                return result
+        return Value(
+            signal_type, value_expr,
             allow_read=allow_read, allow_assign=allow_assign)
 
 

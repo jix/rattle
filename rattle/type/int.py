@@ -39,13 +39,6 @@ class IntMixin(BitsLikeMixin):
 Int.signal_mixin = IntMixin
 
 
-class IntConstMixin(BitsLikeConstMixin, IntMixin):
-    def as_bits(self):
-        return Bits(self.width)[self.value & bitmask(self.width)]
-
-Int.const_mixin = IntConstMixin
-
-
 class UInt(Int):
     @property
     def signed(self):
@@ -87,20 +80,9 @@ class UIntMixin(IntMixin):
 
     def _extend_unchecked(self, width):
         self._access_read()
-        return Value(UInt(width), expr.ZeroExt(width, self))
-
+        return Value._auto(UInt(width), expr.ZeroExt(width, self))
 
 UInt.signal_mixin = UIntMixin
-
-
-class UIntConstMixin(IntConstMixin, UIntMixin):
-    def as_sint(self):
-        return SInt(self.width + 1)[self.value]
-
-    def _extend_unchecked(self, width):
-        return Const(UInt(width), self.value)
-
-UInt.const_mixin = UIntConstMixin
 
 
 class SInt(Int):
@@ -136,20 +118,13 @@ class SInt(Int):
             return signal.as_sint()
         return super()._generic_convert(signal, implicit=implicit)
 
+    def _masked_const(self, value):
+        return Const(self, signext(self.width, value))
+
 
 class SIntMixin(IntMixin):
     def _extend_unchecked(self, width):
         self._access_read()
-        return Value(SInt(width), expr.SignExt(width, self))
+        return Value._auto(SInt(width), expr.SignExt(width, self))
 
 SInt.signal_mixin = SIntMixin
-
-
-class SIntConstMixin(IntConstMixin, SIntMixin):
-    def _extend_unchecked(self, width):
-        return Const(SInt(width), self.value)
-
-    def __invert__(self):
-        return Const(self.signal_type, ~self.value)
-
-SInt.const_mixin = SIntConstMixin

@@ -50,6 +50,39 @@ class BitsLike(SignalType, metaclass=SignalMeta):
         else:
             return super()._const_signal(value)
 
+    def _eval_nop(self, x):
+        if isinstance(x, Const):
+            return self._masked_const(x.value)
+
+    def _eval_zero_ext(self, width, x):
+        if isinstance(x, Const):
+            assert self.width == width
+            return self._masked_const(bitmask(x.signal_type.width) & x.value)
+
+    def _eval_sign_ext(self, width, x):
+        if isinstance(x, Const):
+            assert self.width == width
+            return self._masked_const(signext(x.signal_type.width, x.value))
+
+    def _eval_not(self, x):
+        if isinstance(x, Const):
+            return self._masked_const(~x.value)
+
+    def _eval_and(self, a, b):
+        if isinstance(a, Const) and isinstance(b, Const):
+            return self._masked_const(a.value & b.value)
+
+    def _eval_or(self, a, b):
+        if isinstance(a, Const) and isinstance(b, Const):
+            return self._masked_const(a.value | b.value)
+
+    def _eval_xor(self, a, b):
+        if isinstance(a, Const) and isinstance(b, Const):
+            return self._masked_const(a.value ^ b.value)
+
+    def _masked_const(self, value):
+        return Const(self, bitmask(self.width) & value)
+
 
 class BitsLikeMixin(SignalMixin):
     @property
@@ -65,7 +98,7 @@ class BitsLikeMixin(SignalMixin):
 
     def __invert__(self):
         self._access_read()
-        return Value(self.signal_type, expr.Not(self))
+        return Value._auto(self.signal_type, expr.Not(self))
 
     def _binary_bitop(self, other, op, const_op):
         generic_type = type(self.signal_type)
@@ -84,7 +117,7 @@ class BitsLikeMixin(SignalMixin):
         if isinstance(a, Const) and isinstance(b, Const):
             return generic_type(width)[const_op(a.value, b.value)]
         else:
-            return Value(generic_type(width), op(a, b))
+            return Value._auto(generic_type(width), op(a, b))
 
     def __and__(self, other):
         return self._binary_bitop(other, expr.And, lambda a, b: a & b)
@@ -116,20 +149,9 @@ class BitsLikeMixin(SignalMixin):
 
     def _extend_unchecked(self, width):
         self._access_read()
-        return Value(Bits(width), expr.ZeroExt(width, self))
-
+        return Value._auto(Bits(width), expr.ZeroExt(width, self))
 
 BitsLike.signal_mixin = BitsLikeMixin
-
-
-class BitsLikeConstMixin(Const, BitsLikeMixin):
-    def _extend_unchecked(self, width):
-        return Const(Bits(width), self.value)
-
-    def __invert__(self):
-        return Const(self.signal_type, (~self.value) & bitmask(self.width))
-
-BitsLike.const_mixin = BitsLikeConstMixin
 
 
 class Bits(BitsLike):
@@ -146,15 +168,3 @@ class BitsMixin(BitsLikeMixin):
         return self._auto_lvalue(SInt(self.width), expr.Nop(self))
 
 Bits.signal_mixin = BitsMixin
-
-
-class BitsConstMixin(BitsLikeConstMixin, BitsMixin):
-    def as_uint(self):
-        from .int import UInt
-        return UInt(self.width)[self.value]
-
-    def as_sint(self):
-        from .int import SInt
-        return SInt(self.width)[signext(self.width, self.value)]
-
-Bits.const_mixin = BitsConstMixin
