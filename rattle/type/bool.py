@@ -79,4 +79,14 @@ class BoolMixin(SignalMixin):
     def __rxor__(self, other):
         return self.__xor__(other)
 
+    def repeat(self, count):
+        from .bits import Bits
+        if not isinstance(count, int):
+            raise TypeError('repetition count must be an integer')
+        elif count < 0:
+            raise ValueError('repitition count must not be negative')
+        else:
+            self._access_read()
+            return Value._auto(Bits(count), expr.Repeat(count, self))
+
 BoolType.signal_mixin = BoolMixin

@@ -9,6 +9,7 @@ _ops = '''
     Not: x
     And Or Xor: a b
     SignExt ZeroExt: bits x
+    Repeat: count x
 '''
 
 _snake_case_re = re.compile('((?<=[a-z0-9])[A-Z]|(?!^)[A-Z](?=[a-z]))')

@@ -34,3 +34,8 @@ def test_construct_binops(module):
     module.out_or[:] = module.a | module.b
     module.out_xor = Output(Bool)
     module.out_xor[:] = module.a ^ module.b
+
+
+def test_const_repeat():
+    assert Bool[True].repeat(8).value == 0xFF
+    assert Bool[False].repeat(8).value == 0x00

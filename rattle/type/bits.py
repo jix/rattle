@@ -2,7 +2,7 @@ from .type import *
 from .. import expr
 from ..signal import Value, Const
 from ..error import ConversionNotImplemented
-from ..bitmath import signext, bitmask
+from ..bitmath import signext, bitmask, bitrepeat
 
 
 class BitsLike(SignalType, metaclass=SignalMeta):
@@ -80,6 +80,17 @@ class BitsLike(SignalType, metaclass=SignalMeta):
         if isinstance(a, Const) and isinstance(b, Const):
             return self._masked_const(a.value ^ b.value)
 
+    def _eval_repeat(self, count, x):
+        from .bool import Bool
+        if isinstance(x, Const):
+            if x.signal_type == Bool:
+                assert self.width == count
+                return Bits(count)[x.value * bitmask(count)]
+            else:
+                width = count * x.width
+                assert self.width == width
+                return Bits(width)[bitrepeat(count, x.width, x.value)]
+
     def _masked_const(self, value):
         return Const(self, bitmask(self.width) & value)
 
@@ -150,6 +161,16 @@ class BitsLikeMixin(SignalMixin):
     def _extend_unchecked(self, width):
         self._access_read()
         return Value._auto(Bits(width), expr.ZeroExt(width, self))
+
+    def repeat(self, count):
+        if not isinstance(count, int):
+            raise TypeError('repetition count must be an integer')
+        elif count < 0:
+            raise ValueError('repitition count must not be negative')
+        else:
+            self._access_read()
+            return Value._auto(
+                Bits(self.width * count), expr.Repeat(count, self))
 
 BitsLike.signal_mixin = BitsLikeMixin
 
