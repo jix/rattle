@@ -101,9 +101,10 @@ class Signal(metaclass=abc.ABCMeta):
             raise TypeError(
                 "assignment to type %r from incompatible type %r" %
                 (self.signal_type, value.signal_type))
-        # TODO Conditional assignments
         # TODO Post assignment to module
-        self._assignments.append(value)
+        module = context.current().module
+        conditions = module._condition_stack.current_conditions()
+        self._assignments.append((conditions, value))
 
     def _auto_lvalue(self, *args, **kwds):
         module = context.current().module
