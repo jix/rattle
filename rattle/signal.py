@@ -158,6 +158,11 @@ class Signal(metaclass=abc.ABCMeta):
         # pylint: disable=no-self-use
         return NotImplemented
 
+    def as_implicit(self, name):
+        from .implicit import Implicit
+        Implicit._module_scope_bind(name, self)
+        return self
+
 
 class Wire(Signal):
     def __init__(self, signal_type):

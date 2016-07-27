@@ -16,3 +16,7 @@ class InvalidSignalRead(InvalidSignalAccess):
 
 class ConversionNotImplemented(NotImplementedError):
     pass
+
+
+class ImplicitNotFound(RuntimeError):
+    pass

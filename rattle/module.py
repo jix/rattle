@@ -11,6 +11,7 @@ class Module(metaclass=abc.ABCMeta):
         self.__signals = []
         self.__assignments = []
         self._condition_stack = ConditionStack()
+        self._implicit_bindings = {}
         try:
             self.__parent = ctx.module
         except NoModuleUnderConstruction:
