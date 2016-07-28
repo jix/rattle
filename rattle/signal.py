@@ -94,13 +94,8 @@ class Signal(metaclass=abc.ABCMeta):
 
     def assign(self, value):
         self._access_assign()
-        # TODO Automatic constant conversion
+        value = self.signal_type.convert(value, implicit=True)
         value._access_read()
-        # TODO Allow some automatic coercion
-        if self.signal_type != value.signal_type:
-            raise TypeError(
-                "assignment to type %r from incompatible type %r" %
-                (self.signal_type, value.signal_type))
         # TODO Post assignment to module
         module = context.current().module
         conditions = module._condition_stack.current_conditions()
