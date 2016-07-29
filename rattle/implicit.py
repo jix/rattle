@@ -15,7 +15,7 @@ class Implicit:
         while True:
             path.append(lookup_module)
             try:
-                value = lookup_module._implicit_bindings[name]
+                value = lookup_module._module_data.implicit_bindings[name]
             except KeyError:
                 lookup_module = lookup_module.parent
                 if lookup_module is None:
@@ -30,7 +30,7 @@ class Implicit:
         for (parent, child) in zip(path[::-1], path[-2::-1]):
             with child.reopen():
                 implicit_input = Input(value.signal_type)
-            child._implicit_bindings[name] = implicit_input
+            child._module_data.implicit_bindings[name] = implicit_input
             with parent.reopen():
                 implicit_input[:] = value
             value = implicit_input
@@ -49,21 +49,21 @@ class Implicit:
             if isinstance(value, Signal):
                 value._access_read()
             try:
-                old = module._implicit_bindings[name]
+                old = module._module_data.implicit_bindings[name]
             except KeyError:
                 restores.append((name, False, None))
             else:
                 restores.append((name, True, old))
 
-            module._implicit_bindings[name] = value
+            module._module_data.implicit_bindings[name] = value
 
         yield
 
         for name, present, old in restores:
             if present:
-                module._implicit_bindings[name] = old
+                module._module_data.implicit_bindings[name] = old
             else:
-                del module._implicit_bindings[name]
+                del module._module_data.implicit_bindings[name]
 
     @staticmethod
     def _module_scope_bind(name, value):
@@ -71,7 +71,7 @@ class Implicit:
         module = context.current().module
         if isinstance(value, Signal):
             value._access_read()
-        module._implicit_bindings[name] = value
+        module._module_data.implicit_bindings[name] = value
 
     @staticmethod
     def _check_name(name):

@@ -32,7 +32,7 @@ class ConditionStack:
 
 @contextmanager
 def when(condition):
-    stack = context.current().module._condition_stack
+    stack = context.current().module._module_data.condition_stack
     stack.new()
     stack.enter(condition)
     yield
@@ -41,7 +41,7 @@ def when(condition):
 
 @contextmanager
 def elwhen(condition):
-    stack = context.current().module._condition_stack
+    stack = context.current().module._module_data.condition_stack
     stack.enter(condition)
     yield
     stack.exit()
@@ -49,9 +49,9 @@ def elwhen(condition):
 
 class OtherwiseContext:
     def __enter__(self):
-        context.current().module._condition_stack.enter(Bool[True])
+        context.current().module._module_data.condition_stack.enter(Bool[True])
 
     def __exit__(self, *exc):
-        context.current().module._condition_stack.exit()
+        context.current().module._module_data.condition_stack.exit()
 
 otherwise = OtherwiseContext()

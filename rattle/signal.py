@@ -17,11 +17,16 @@ class NotAccessibleClass:
     def __repr__(self):
         return "<<NotAccessible>>"
 
-    @staticmethod
-    def _allow_access_from(module):
-        return False
-
 NotAccessible = NotAccessibleClass()
+
+
+def _allow_access(to_module, from_module):
+    if to_module is NotAccessible:
+        return False
+    elif to_module is Constants:
+        return True
+    else:
+        return to_module is from_module
 
 
 class Signal(metaclass=abc.ABCMeta):
@@ -44,7 +49,12 @@ class Signal(metaclass=abc.ABCMeta):
         self.__module = module
         self.__rmodule = rmodule
         self.__lmodule = lmodule
-        self.module._add_signal(self)
+        try:
+            module_data = self.module._module_data
+        except AttributeError:
+            pass
+        else:
+            module_data.signals.append(self)
         self.__signal_type = signal_type
         self._assignments = []
 
@@ -69,7 +79,7 @@ class Signal(metaclass=abc.ABCMeta):
 
     def _access_read(self):
         module = context.current().module
-        if not self.rmodule._allow_access_from(module):
+        if not _allow_access(self.rmodule, module):
             if self.rmodule == NotAccessible:
                 raise InvalidSignalRead(
                     "non-readable signal read from module %r" %
@@ -82,7 +92,7 @@ class Signal(metaclass=abc.ABCMeta):
 
     def _access_assign(self):
         module = context.current().module
-        if not self.lmodule._allow_access_from(module):
+        if not _allow_access(self.lmodule, module):
             if self.lmodule == NotAccessible:
                 raise InvalidSignalAssignment(
                     "non-assignable signal assigned from module %r" %
@@ -96,15 +106,15 @@ class Signal(metaclass=abc.ABCMeta):
         self._access_assign()
         value = self.signal_type.convert(value, implicit=True)
         value._access_read()
-        # TODO Post assignment to module
-        module = context.current().module
-        conditions = module._condition_stack.current_conditions()
+        module_data = context.current().module._module_data
+        conditions = module_data.condition_stack.current_conditions()
+        module_data.assignments.append((self, conditions, value))
         self._assignments.append((conditions, value))
 
     def _auto_lvalue(self, *args, **kwds):
         module = context.current().module
-        allow_read = self.rmodule._allow_access_from(module)
-        allow_assign = self.lmodule._allow_access_from(module)
+        allow_read = _allow_access(self.rmodule, module)
+        allow_assign = _allow_access(self.lmodule, module)
         if not allow_read and not allow_assign:
             if self.rmodule == NotAccessible:
                 raise InvalidSignalAccess(
@@ -217,8 +227,8 @@ class Value(Signal):
         from .type.flip import Flip
         module = context.current().module
         # Note that lmodule and rmodule are swapped below
-        allow_read = self.lmodule._allow_access_from(module)
-        allow_assign = self.rmodule._allow_access_from(module)
+        allow_read = _allow_access(self.lmodule, module)
+        allow_assign = _allow_access(self.rmodule, module)
         if not allow_read and not allow_assign:
             if self.rmodule == NotAccessible:
                 raise InvalidSignalAccess(
@@ -245,9 +255,9 @@ class Value(Signal):
     def _auto_concat_lvalue(signals, *args, **kwds):
         module = context.current().module
         allow_read = all(
-            signal.rmodule._allow_access_from(module) for signal in signals)
+            _allow_access(signal.rmodule, module) for signal in signals)
         allow_assign = all(
-            signal.lmodule._allow_access_from(module) for signal in signals)
+            _allow_access(signal.lmodule, module) for signal in signals)
 
         if not allow_read and not allow_assign:
             # TODO More specific error messages
@@ -278,13 +288,7 @@ class Value(Signal):
 
 
 class ConstantsClass:
-    @staticmethod
-    def _add_signal(signal):
-        pass
-
-    @staticmethod
-    def _allow_access_from(module):
-        return True
+    pass
 
 Constants = ConstantsClass()
 
