@@ -194,19 +194,6 @@ class Output(IOPort):
             rmodule=module.parent or NotAccessible)
 
 
-class Reg(Signal):
-    def __init__(self, signal_type):
-        # TODO Allow construction with automatic assignment
-        # TODO Allow optional enable for automatic assignment
-        # TODO Allow specifying the clock
-        module = context.current().module
-        super().__init__(
-            signal_type,
-            module=module,
-            lmodule=module,
-            rmodule=module)
-
-
 class Value(Signal):
     def __init__(
             self, signal_type, value_expr, *,

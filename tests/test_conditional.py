@@ -1,5 +1,6 @@
 from rattle.module import *
 from rattle.signal import *
+from rattle.reg import *
 from rattle.type import *
 from rattle.conditional import *
 

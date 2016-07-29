@@ -1,4 +1,6 @@
 import pytest
+from rattle.type import Clock
+from rattle.signal import Input
 from rattle.module import Module
 
 
@@ -6,7 +8,7 @@ from rattle.module import Module
 def module():
     class TestModule(Module):
         def construct(self):
-            pass
+            self.clk = Input(Clock()).as_implicit('clk')
     mod = TestModule()
     with mod.reopen():
         yield mod

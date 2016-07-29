@@ -1,6 +1,7 @@
 from pytest import raises
 from rattle.module import *
 from rattle.signal import *
+from rattle.reg import *
 from rattle.type import *
 from rattle.error import *
 from rattle.implicit import *
@@ -63,14 +64,14 @@ def test_shadowing_implicit():
 
     class Middle(Module):
         def construct(self):
-            self.reg_bits = Reg(Bits(10))
-            self.reg_bool = Reg(Bool)
+            self.wire_bits = Wire(Bits(10))
+            self.wire_bool = Wire(Bool)
 
-            self.reg_bool[:] = Implicit('implicit')
+            self.wire_bool[:] = Implicit('implicit')
 
             self.inner_bool_a = Inner(Bool)
 
-            with Implicit.bind('implicit', self.reg_bits):
+            with Implicit.bind('implicit', self.wire_bits):
                 self.inner_bits = Inner(Bits(10))
 
             self.inner_bool_b = Inner(Bool)
