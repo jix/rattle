@@ -21,7 +21,7 @@ class ConditionStack:
 
     def current_conditions(self):
         conditions = []
-        for level in self._stack:
+        for level in self._stack[:-1]:
             if level:
                 conditions.extend((False, neg) for neg in level[:-1])
                 pos = level[-1]

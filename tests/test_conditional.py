@@ -8,11 +8,15 @@ from rattle.conditional import *
 def test_single_when(module):
     module.reg = Reg(Bits(10))
     module.condition = Input(Bool)
+    module.reg2 = Reg(Bool)
 
     with when(module.condition):
         module.reg[:] = module.reg ^ Bits[0b1010101010]
 
+    module.reg2[:] = module.condition
+
     assert module.reg._assignments[0][0] == ((True, module.condition),)
+    assert module.reg2._assignments[0][0] == ()
 
 
 def test_when_otherwise(module):
