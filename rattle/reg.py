@@ -26,3 +26,6 @@ class Reg(Signal):
     @property
     def clk(self):
         return self._clk
+
+    def __repr__(self):
+        return "Reg(%r)" % (self.signal_type)

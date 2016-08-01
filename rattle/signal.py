@@ -179,6 +179,9 @@ class Wire(Signal):
             lmodule=module,
             rmodule=module)
 
+    def __repr__(self):
+        return "Wire(%r)" % (self.signal_type)
+
 
 class IOPort(Signal, metaclass=abc.ABCMeta):
     pass
@@ -193,6 +196,9 @@ class Input(IOPort):
             lmodule=module.parent or NotAccessible,
             rmodule=module)
 
+    def __repr__(self):
+        return "Input(%r)" % (self.signal_type)
+
 
 class Output(IOPort):
     def __init__(self, signal_type):
@@ -202,6 +208,9 @@ class Output(IOPort):
             module=module,
             lmodule=module,
             rmodule=module.parent or NotAccessible)
+
+    def __repr__(self):
+        return "Output(%r)" % (self.signal_type)
 
 
 class Value(Signal):
