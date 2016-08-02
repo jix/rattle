@@ -8,13 +8,17 @@ from .conditional import ConditionStack
 class ModuleData:
     def __init__(self, ctx, module):
         self.signals = []
+        self.io_signals = []
         self.assignments = []
         self.condition_stack = ConditionStack()
         self.implicit_bindings = {}
+        self.submodules = []
         try:
             self.parent = ctx.module
         except NoModuleUnderConstruction:
             self.parent = None
+        else:
+            self.parent._module_data.submodules.append(module)
 
 
 class Module(metaclass=abc.ABCMeta):

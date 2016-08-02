@@ -25,5 +25,6 @@ for line in _ops.strip().split('\n'):
     fields = fields.strip()
     for op in ops:
         op_class = namedtuple(op, fields)
+        op_class.fn_name = _snake_case(op)
         op_class.eval_fn_name = '_eval_' + _snake_case(op)
         globals()[op] = op_class

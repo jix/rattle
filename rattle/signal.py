@@ -184,7 +184,11 @@ class Wire(Signal):
 
 
 class IOPort(Signal, metaclass=abc.ABCMeta):
-    pass
+    def __init__(self, signal_type, *, module, rmodule, lmodule):
+        super().__init__(
+            signal_type,
+            module=module, rmodule=rmodule, lmodule=lmodule)
+        module._module_data.io_signals.append(self)
 
 
 class Input(IOPort):
