@@ -22,6 +22,7 @@ class Reg(Signal):
             module=module,
             lmodule=module,
             rmodule=module)
+        self.named()
 
     @property
     def clk(self):

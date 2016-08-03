@@ -46,15 +46,10 @@ class Signal(metaclass=abc.ABCMeta):
         return _check_signal_type(signal_type).signal_mixin, signal_type
 
     def __init__(self, signal_type, *, module, rmodule, lmodule):
+        self._named = False
         self.__module = module
         self.__rmodule = rmodule
         self.__lmodule = lmodule
-        try:
-            module_data = self.module._module_data
-        except AttributeError:
-            pass
-        else:
-            module_data.signals.append(self)
         self.__signal_type = signal_type
         self._assignments = []
 
@@ -168,6 +163,13 @@ class Signal(metaclass=abc.ABCMeta):
         Implicit._module_scope_bind(name, self)
         return self
 
+    def named(self, name=None):
+        # TODO Store suggested name for the naming pass
+        # TODO Check for Consts
+        if not self._named:
+            self._named = True
+            self.module._module_data.named_signals.append(self)
+
 
 class Wire(Signal):
     def __init__(self, signal_type):
@@ -178,6 +180,7 @@ class Wire(Signal):
             module=module,
             lmodule=module,
             rmodule=module)
+        self.named()
 
     def __repr__(self):
         return "Wire(%r)" % (self.signal_type)
@@ -188,7 +191,7 @@ class IOPort(Signal, metaclass=abc.ABCMeta):
         super().__init__(
             signal_type,
             module=module, rmodule=rmodule, lmodule=lmodule)
-        module._module_data.io_signals.append(self)
+        self.named()
 
 
 class Input(IOPort):

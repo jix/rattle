@@ -33,6 +33,7 @@ class ModuleToGraph:
         self.ids = node_ids
         self.module = module
         self.graph = graphviz.Digraph('cluster_' + self.ids.unique())
+        self.signals = set()
 
         self.graph.attr(
             'graph',
@@ -57,26 +58,14 @@ class ModuleToGraph:
             fontname='Linux Libertine',
             color='#666666',
         )
-        for io_signal in module._module_data.io_signals:
-            if isinstance(io_signal, Input):
-                self.add_input(io_signal)
-            elif isinstance(io_signal, Output):
-                self.add_output(io_signal)
+        for signal in module._module_data.io_signals:
+            self.signal(signal)
 
         if depth == 0:
             return
 
-        for signal in module._module_data.signals:
-            if isinstance(signal, IOPort):
-                continue
-            elif isinstance(signal, Reg):
-                self.add_reg(signal)
-            elif isinstance(signal, Wire):
-                self.add_wire(signal)
-            elif isinstance(signal, Value):
-                self.add_value(signal)
-            else:
-                raise RuntimeError('unexpected signal node type')
+        for signal in module._module_data.named_signals:
+            self.signal(signal)
 
         for submodule in module._module_data.submodules:
             submodule_to_dot = ModuleToGraph(
@@ -89,13 +78,28 @@ class ModuleToGraph:
             self.add_assignment(i, *assignment)
 
     def signal(self, signal):
-        if isinstance(signal, Const):
+        if signal in self.signals:
+            return self.ids[signal]
+        elif isinstance(signal, Const):
             signal_id = self.ids.unique()
             self.graph.node(
                 signal_id, label='%r\n%r' % (signal.value, signal.signal_type),
                 fillcolor='#ff99ff')
             return signal_id
         else:
+            if isinstance(signal, Input):
+                self.add_input(signal)
+            elif isinstance(signal, Output):
+                self.add_output(signal)
+            elif isinstance(signal, Reg):
+                self.add_reg(signal)
+            elif isinstance(signal, Wire):
+                self.add_wire(signal)
+            elif isinstance(signal, Value):
+                self.add_value(signal)
+            else:
+                raise RuntimeError('unexpected signal node type')
+            self.signals.add(signal)
             return self.ids[signal]
 
     def add_value(self, signal):
