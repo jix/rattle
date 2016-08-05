@@ -39,7 +39,6 @@ class ModuleToGraph:
             'graph',
             color='black', label=repr(module),
             fontname='Linux Libertine',
-            rankdir='LR',
             style='dotted',
             ranksep='0.3',
             maxiter='300',
@@ -58,14 +57,13 @@ class ModuleToGraph:
             fontname='Linux Libertine',
             color='#666666',
         )
-        for signal in module._module_data.io_signals:
-            self.signal(signal)
+
+        for signal in module._module_data.named_signals:
+            if isinstance(signal, IOPort):
+                self.signal(signal)
 
         if depth == 0:
             return
-
-        for signal in module._module_data.named_signals:
-            self.signal(signal)
 
         for submodule in module._module_data.submodules:
             submodule_to_dot = ModuleToGraph(
@@ -73,6 +71,9 @@ class ModuleToGraph:
                 depth=depth - 1,
                 node_ids=self.ids)
             self.graph.subgraph(submodule_to_dot.graph)
+
+        for signal in module._module_data.named_signals:
+            self.signal(signal)
 
         for i, assignment in enumerate(module._module_data.assignments):
             self.add_assignment(i, *assignment)
@@ -163,7 +164,7 @@ class ModuleToGraph:
         condition_node = self.ids.unique()
         self.graph.node(condition_node, label=str(i))
         self.graph.edge(
-            condition_node, self.ids[target],
+            condition_node, self.signal(target),
             arrowhead='empty')
         self.graph.edge(
             self.signal(value), condition_node,
@@ -171,6 +172,6 @@ class ModuleToGraph:
 
         for (polarity, signal) in condition:
             self.graph.edge(
-                self.ids[signal], condition_node,
+                self.signal(signal), condition_node,
                 style='dashed',
                 color='#00dd00' if polarity else '#aa0000')
