@@ -127,6 +127,22 @@ class ModuleToGraph:
         for arg in args:
             self.graph.edge(self.signal(arg), expr_node)
 
+    def add_bundle(self, signal, fields):
+        expr_node = self.ids[signal]
+        self.graph.node(expr_node, label='{&#8943;}\n%r' % signal.signal_type)
+        for name, field in fields.items():
+            field_id = self.ids.unique()
+            self.graph.node(field_id, label='%s=' % name)
+            self.graph.edge(field_id, expr_node)
+            self.graph.edge(self.signal(field), field_id)
+
+    def add_field(self, signal, name, bundle):
+        expr_node = self.ids[signal]
+        self.graph.node(
+            expr_node,
+            label='.%s\n%r' % (name, signal.signal_type))
+        self.graph.edge(self.signal(bundle), expr_node)
+
     def add_input(self, signal):
         self.graph.node(
             self.ids[signal],

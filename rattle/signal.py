@@ -3,7 +3,8 @@ import abc
 from . import context
 from . import expr
 from .error import (
-    InvalidSignalAccess, InvalidSignalRead, InvalidSignalAssignment)
+    InvalidSignalAccess, InvalidSignalRead, InvalidSignalAssignment,
+    NoModuleUnderConstruction)
 
 
 def _check_signal_type(signal_type):
@@ -269,7 +270,11 @@ class Value(Signal):
 
     @staticmethod
     def _auto_concat_lvalue(signals, *args, **kwds):
-        module = context.current().module
+        try:
+            module = context.current().module
+        except NoModuleUnderConstruction:
+            # TODO Better error reporting for this case
+            module = Constants
         allow_read = all(
             _allow_access(signal.rmodule, module) for signal in signals)
         allow_assign = all(
