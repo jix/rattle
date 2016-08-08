@@ -56,6 +56,11 @@ class Bundle(SignalType):
             values = dict((key, field.value) for key, field in fields.items())
             return Const(self, values)
 
+    @staticmethod
+    def _eval_field(result_type, name, x):
+        if isinstance(x, Const):
+            return Const(result_type, x.value[name])
+
 
 class BundleMixin(SignalMixin):
     def __getitem__(self, key):

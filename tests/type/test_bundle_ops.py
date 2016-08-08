@@ -52,6 +52,14 @@ def test_bundle_construction_const():
     assert MyBundle[values].value == values
 
 
+def test_bundle_field_access_const():
+    MyBundle = Bundle(a=Bool, b=Bits(8))
+    values = {'a': True, 'b': 0b10101010}
+    my_bundle = MyBundle[values]
+    assert my_bundle.a.value
+    assert my_bundle.b.value == 0b10101010
+
+
 def test_bundle_construction_helper_fn_non_const(module):
     self = module
     MyBundle = Bundle(a=Bool, b=Bits(8))

@@ -3,7 +3,7 @@ from collections import namedtuple
 
 _ops = '''
     Nop: x
-    Field: name x
+    Field: name $x
     Flip: x
     Concat: exprs
     Not: x
