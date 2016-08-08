@@ -108,7 +108,11 @@ class Signal(metaclass=abc.ABCMeta):
         self._assignments.append((conditions, value))
 
     def _auto_lvalue(self, *args, **kwds):
-        module = context.current().module
+        try:
+            module = context.current().module
+        except NoModuleUnderConstruction:
+            # TODO Better error reporting for this case
+            module = Constants
         allow_read = _allow_access(self.rmodule, module)
         allow_assign = _allow_access(self.lmodule, module)
         if not allow_read and not allow_assign:
@@ -165,6 +169,37 @@ class Signal(metaclass=abc.ABCMeta):
         if not self._named:
             self._named = True
             self.module._module_data.named_signals.append(self)
+
+    def _deflip(self):
+        return self
+
+    def flip(self):
+        from .type.flip import Flip
+        module = context.current().module
+        # Note that lmodule and rmodule are swapped below
+        allow_read = _allow_access(self.lmodule, module)
+        allow_assign = _allow_access(self.rmodule, module)
+        if not allow_read and not allow_assign:
+            if self.rmodule == NotAccessible:
+                raise InvalidSignalAccess(
+                    "signal assignable only from module %r accessed from %r" %
+                    (self.lmodule, module))
+            elif self.lmodule == NotAccessible:
+                raise InvalidSignalAccess(
+                    "signal readable only from module %r accessed from %r" %
+                    (self.rmodule, module))
+            elif self.rmodule == self.lmodule:
+                raise InvalidSignalAccess(
+                    "signal accessible only from module %r accessed from %r" %
+                    (self.rmodule, module))
+            else:
+                raise InvalidSignalAccess(
+                    "signal accessible only from modules %r and %r "
+                    "accessed from %r" %
+                    (self.lmodule, self.rmodule, module))
+        return Value._auto(
+            Flip(self.signal_type), expr.Flip(self),
+            allow_read=allow_read, allow_assign=allow_assign)
 
 
 class Wire(Signal):
@@ -232,37 +267,6 @@ class Value(Signal):
     def expr(self):
         return self.__expr
 
-    def _deflip(self):
-        return self
-
-    def flip(self):
-        from .type.flip import Flip
-        module = context.current().module
-        # Note that lmodule and rmodule are swapped below
-        allow_read = _allow_access(self.lmodule, module)
-        allow_assign = _allow_access(self.rmodule, module)
-        if not allow_read and not allow_assign:
-            if self.rmodule == NotAccessible:
-                raise InvalidSignalAccess(
-                    "signal assignable only from module %r accessed from %r" %
-                    (self.lmodule, module))
-            elif self.lmodule == NotAccessible:
-                raise InvalidSignalAccess(
-                    "signal readable only from module %r accessed from %r" %
-                    (self.rmodule, module))
-            elif self.rmodule == self.lmodule:
-                raise InvalidSignalAccess(
-                    "signal accessible only from module %r accessed from %r" %
-                    (self.rmodule, module))
-            else:
-                raise InvalidSignalAccess(
-                    "signal accessible only from modules %r and %r "
-                    "accessed from %r" %
-                    (self.lmodule, self.rmodule, module))
-        return Value._auto(
-            Flip(self.signal_type), expr.Flip(self),
-            allow_read=allow_read, allow_assign=allow_assign)
-
     @staticmethod
     def _auto_concat_lvalue(signals, *args, **kwds):
         try:
@@ -289,15 +293,22 @@ class Value(Signal):
     def _auto(
             signal_type, value_expr, *,
             allow_read=True, allow_assign=False):
-        fn = value_expr.eval_fn_name
-        try:
-            fn = getattr(signal_type, fn)
-        except AttributeError:
-            pass
-        else:
-            result = fn(*value_expr)
+        if value_expr.eval_field:
+            target = getattr(value_expr, value_expr.eval_field)
+            fn = getattr(target.signal_type, value_expr.eval_fn_name)
+            result = fn(signal_type, *value_expr)
             if result is not None:
                 return result
+        else:
+            fn = value_expr.eval_fn_name
+            try:
+                fn = getattr(signal_type, fn)
+            except AttributeError:
+                pass
+            else:
+                result = fn(*value_expr)
+                if result is not None:
+                    return result
         return Value(
             signal_type, value_expr,
             allow_read=allow_read, allow_assign=allow_assign)
