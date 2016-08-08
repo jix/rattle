@@ -56,9 +56,9 @@ class SignalType(metaclass=SignalMeta):
             except AttributeError:
                 result = NotImplemented
             else:
-                result = const_signal_fn(self)
+                result = const_signal_fn(self, implicit=implicit)
             if result is NotImplemented:
-                result = self._const_signal(const)
+                result = self._const_signal(const, implicit=implicit)
             if result is NotImplemented:
                 raise ConversionNotImplemented(
                     "%sconversion from %s to %r not supported" % (
@@ -89,9 +89,9 @@ class SignalType(metaclass=SignalMeta):
             except AttributeError:
                 result = NotImplemented
             else:
-                result = const_signal_fn(cls)
+                result = const_signal_fn(cls, implicit=implicit)
             if result is NotImplemented:
-                result = cls._generic_const_signal(const)
+                result = cls._generic_const_signal(const, implicit=implicit)
             if result is NotImplemented:
                 raise ConversionNotImplemented(
                     "%sconversion from %s to %s not supported" % (
@@ -108,12 +108,13 @@ class SignalType(metaclass=SignalMeta):
         # pylint: disable=unused-variable
         return NotImplemented
 
-    def _const_signal(self, value):
-        # pylint: disable=no-self-use
+    def _const_signal(self, value, *, implicit):
+        # pylint: disable=no-self-use, unused-variable
         return NotImplemented
 
     @classmethod
-    def _generic_const_signal(cls, value):
+    def _generic_const_signal(cls, value, *, implicit):
+        # pylint: disable=unused-variable
         return NotImplemented
 
 

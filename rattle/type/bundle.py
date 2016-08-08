@@ -26,7 +26,7 @@ class Bundle(SignalType):
             type(self),
             tuple((key, signal) for key, signal in self.signals.items()))
 
-    def _const_signal(self, value):
+    def _const_signal(self, value, *, implicit):
         if isinstance(value, BundleHelper):
             value = value._values
 
@@ -46,7 +46,7 @@ class Bundle(SignalType):
             field_signals = {}
             for key, signal_type in self.__signals.items():
                 field_signals[key] = signal_type.convert(
-                    value[key], implicit=True)
+                    value[key], implicit=implicit)
             return Value._auto_concat_lvalue(
                 field_signals.values(), self, expr.Bundle(field_signals))
         return NotImplemented

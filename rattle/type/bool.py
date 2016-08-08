@@ -12,7 +12,8 @@ class BoolType(SignalType):
     def _signature_tuple(self):
         return (type(self),)
 
-    def _const_signal(self, value):
+    def _const_signal(self, value, *, implicit):
+        # pylint: disable=unused-variable
         return Const(Bool, bool(value))
 
     @staticmethod

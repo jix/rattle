@@ -11,14 +11,14 @@ class Int(BitsLike, metaclass=SignalMeta):
         pass
 
     @classmethod
-    def _generic_const_signal(cls, value):
+    def _generic_const_signal(cls, value, *, implicit):
         if isinstance(value, int):
             if value < 0:
                 return SInt[value]
             else:
                 return UInt[value]
         else:
-            return super()._generic_const_signal(value)
+            return super()._generic_const_signal(value, implicit=implicit)
 
 
 class IntMixin(BitsLikeMixin):
@@ -45,10 +45,10 @@ class UInt(Int):
         return False
 
     @classmethod
-    def _generic_const_signal(cls, value):
+    def _generic_const_signal(cls, value, *, implicit):
         # pylint: disable=bad-super-call
         # We intentionally skip the Int version as it will call this one
-        return super(Int, cls)._generic_const_signal(value)
+        return super(Int, cls)._generic_const_signal(value, implicit=implicit)
 
     def _convert(self, signal, *, implicit):
         if not implicit and signal.signal_type.__class__ == Bits:
@@ -96,7 +96,7 @@ class SInt(Int):
         return True
 
     @classmethod
-    def _generic_const_signal(cls, value):
+    def _generic_const_signal(cls, value, *, implicit):
         if isinstance(value, int):
             if value < 0:
                 width = (~value).bit_length() + 1
@@ -104,7 +104,7 @@ class SInt(Int):
                 width = value.bit_length() + 1
             return Const(cls(width), value)
         else:
-            return super()._generic_const_signal(value)
+            return super()._generic_const_signal(value, implicit=implicit)
 
     def _convert(self, signal, *, implicit):
         if not implicit and signal.signal_type.__class__ == Bits:

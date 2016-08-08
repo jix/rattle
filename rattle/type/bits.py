@@ -34,7 +34,7 @@ class BitsLike(SignalType, metaclass=SignalMeta):
             expr.Concat(signals))
 
     @classmethod
-    def _generic_const_signal(cls, value):
+    def _generic_const_signal(cls, value, *, implicit):
         if isinstance(value, int):
             if value < 0:
                 raise ValueError(
@@ -42,13 +42,13 @@ class BitsLike(SignalType, metaclass=SignalMeta):
             width = value.bit_length()
             return Const(cls(width), value)
         else:
-            return super()._generic_const_signal(value)
+            return super()._generic_const_signal(value, implicit=implicit)
 
-    def _const_signal(self, value):
+    def _const_signal(self, value, *, implicit):
         if isinstance(value, int):
             return self.__class__[value].extend(self.width)
         else:
-            return super()._const_signal(value)
+            return super()._const_signal(value, implicit=implicit)
 
     def _eval_nop(self, x):
         if isinstance(x, Const):
