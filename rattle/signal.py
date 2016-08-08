@@ -135,13 +135,8 @@ class Signal(metaclass=abc.ABCMeta):
             allow_read=allow_read, allow_assign=allow_assign)
 
     def __setitem__(self, key, value):
-        self[key].assign(value)
-
-    def __getitem__(self, key):
         if key == slice(None, None, None):
-            return self
-        else:
-            return super().__getitem__(key)
+            self.assign(value)
 
     def _convert(self, signal_type, *, implicit):
         # pylint: disable=no-self-use, unused-variable

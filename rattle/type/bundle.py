@@ -59,8 +59,6 @@ class Bundle(SignalType):
 
 class BundleMixin(SignalMixin):
     def __getitem__(self, key):
-        if isinstance(key, slice):
-            return super().__getitem__(key)
         item_type = self.signal_type.signals[key]
         return self._auto_lvalue(item_type, expr.Field(key, self))._deflip()
 
