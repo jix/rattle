@@ -6,7 +6,7 @@ from rattle.type import *
 
 def test_vec_const_indexing(module):
     self = module
-    self.vec = Wire(Vec(Bits(8), 4))
+    self.vec = Wire(Vec(4, Bits(8)))
     self.bits_a = Wire(Bits(8))
     self.bits_b = Wire(Bits(8))
     assert self.vec[0].signal_type == Bits(8)
@@ -17,7 +17,7 @@ def test_vec_const_indexing(module):
 
 def test_vec_const_invalid_indexing(module):
     self = module
-    self.vec = Wire(Vec(Bits(8), 4))
+    self.vec = Wire(Vec(4, Bits(8)))
     self.bits_a = Wire(Bits(8))
     self.bits_b = Wire(Bits(8))
     with raises(IndexError):
@@ -30,20 +30,20 @@ def test_vec_construction(module):
     self = module
     self.a, self.b, self.c, self.d = (Wire(Bool) for i in range(4))
 
-    self.vec_1 = Vec(Bool, 4)[self.a, self.b, self.c, self.d]
-    self.vec_2 = Vec(Bool, 4)[True, False, True, False]
+    self.vec_1 = Vec(4, Bool)[self.a, self.b, self.c, self.d]
+    self.vec_2 = Vec(4, Bool)[True, False, True, False]
 
     self.vec_1[:] = self.vec_2
 
 
 def test_vec_construction_const():
-    MyVec = Vec(Bool, 4)
+    MyVec = Vec(4, Bool)
     values = (True, False, True, False)
     assert MyVec[values].value == values
 
 
 def test_vec_field_access_const():
-    MyVec = Vec(Bits(8), 4)
+    MyVec = Vec(4, Bits(8))
     values = [1, 2, 3, 4]
     my_vec = MyVec[values]
     assert my_vec[0].value == 1
@@ -52,7 +52,7 @@ def test_vec_field_access_const():
 
 def test_vec_construction_helper_fn_non_const(module):
     self = module
-    MyVec = Vec(Bits(8), 2)
+    MyVec = Vec(2, Bits(8))
     self.bits_a = Wire(Bits(8))
     self.bits_b = Wire(Bits(8))
     self.vec = vec(self.bits_a, self.bits_b)
@@ -61,6 +61,6 @@ def test_vec_construction_helper_fn_non_const(module):
 
 def test_vec_construction_helper_fn_const(module):
     self = module
-    self.vec = Wire(Vec(Bits(8), 2))
+    self.vec = Wire(Vec(2, Bits(8)))
     self.bits = Wire(Bits(8))
     self.vec[:] = vec(5, self.bits)

@@ -4,7 +4,7 @@ from ..signal import Value, Const
 
 
 class Vec(SignalType):
-    def __init__(self, element_type, length):
+    def __init__(self, length, element_type):
         super().__init__()
         self.__element_type = element_type
         self.__length = length
@@ -18,11 +18,11 @@ class Vec(SignalType):
         return self.__length
 
     def __repr__(self):
-        return "Vec(%r, %i)" % (self.element_type, self.length)
+        return "Vec(%i, %r)" % (self.length, self.element_type)
 
     @property
     def _signature_tuple(self):
-        return (type(self), self.element_type, self.length)
+        return (type(self), self.length, self.element_type)
 
     def _const_signal(self, value, *, implicit):
         if isinstance(value, VecHelper):
@@ -86,6 +86,6 @@ def vec(*args):
     if args and all(isinstance(signal, Signal) for signal in args):
         first_type = args[0].signal_type
         if all(signal.signal_type == first_type for signal in args[1:]):
-            return Vec(first_type, len(args))[args]
+            return Vec(len(args), first_type)[args]
     else:
         return VecHelper(args)
