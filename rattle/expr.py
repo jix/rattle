@@ -4,6 +4,7 @@ from collections import namedtuple
 _ops = '''
     Nop: x
     Field: name $x
+    ConstIndex: index $x
     Flip: x
     Concat: exprs
     Not: x
@@ -11,6 +12,7 @@ _ops = '''
     SignExt ZeroExt: bits x
     Repeat: count x
     Bundle: fields
+    Vec: elements
 '''
 
 _snake_case_re = re.compile('((?<=[a-z0-9])[A-Z]|(?!^)[A-Z](?=[a-z]))')

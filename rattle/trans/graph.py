@@ -143,6 +143,22 @@ class ModuleToGraph:
             label='.%s\n%r' % (name, signal.signal_type))
         self.graph.edge(self.signal(bundle), expr_node)
 
+    def add_vec(self, signal, elements):
+        expr_node = self.ids[signal]
+        self.graph.node(expr_node, label='[&#8943;]\n%r' % signal.signal_type)
+        for i, element in enumerate(elements):
+            element_id = self.ids.unique()
+            self.graph.node(element_id, label='[%i]=' % i)
+            self.graph.edge(element_id, expr_node)
+            self.graph.edge(self.signal(element), element_id)
+
+    def add_const_index(self, signal, index, vec):
+        expr_node = self.ids[signal]
+        self.graph.node(
+            expr_node,
+            label='[%i]\n%r' % (index, signal.signal_type))
+        self.graph.edge(self.signal(vec), expr_node)
+
     def add_input(self, signal):
         self.graph.node(
             self.ids[signal],
