@@ -20,6 +20,9 @@ class Vec(SignalType):
     def __repr__(self):
         return "Vec(%i, %r)" % (self.length, self.element_type)
 
+    def short_repr(self):
+        return "Vec(%i, %s)" % (self.length, self.element_type.short_repr())
+
     @property
     def _signature_tuple(self):
         return (type(self), self.length, self.element_type)

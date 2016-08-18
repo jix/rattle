@@ -117,6 +117,9 @@ class SignalType(metaclass=SignalMeta):
         # pylint: disable=unused-variable
         return NotImplemented
 
+    def short_repr(self):
+        return repr(self)
+
 
 class SignalMixin(Signal):
     pass

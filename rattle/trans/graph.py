@@ -42,6 +42,7 @@ class ModuleToGraph:
             style='dotted',
             ranksep='0.3',
             maxiter='300',
+            tooltip=' ',
         )
         self.graph.attr(
             'node',
@@ -51,11 +52,13 @@ class ModuleToGraph:
             style='filled',
             fillcolor='#dddddd',
             fontname='Linux Libertine',
+            tooltip=' ',
         )
         self.graph.attr(
             'edge',
             fontname='Linux Libertine',
             color='#666666',
+            tooltip=' ',
         )
 
         for signal in module._module_data.named_signals:
@@ -103,6 +106,14 @@ class ModuleToGraph:
             self.signals.add(signal)
             return self.ids[signal]
 
+    def add_signal_node(self, signal, description, **kwds):
+        expr_node = self.ids[signal]
+        self.graph.node(
+            expr_node, label='%s\n%s' % (
+                description, signal.signal_type.short_repr()),
+            tooltip=repr(signal.signal_type), **kwds)
+        return expr_node
+
     def add_value(self, signal):
         getattr(self, 'add_' + signal.expr.fn_name)(signal, *signal.expr)
 
@@ -122,14 +133,12 @@ class ModuleToGraph:
         self.add_commutative('&#9251;', *args)
 
     def add_commutative(self, name, signal, *args):
-        expr_node = self.ids[signal]
-        self.graph.node(expr_node, label='%s\n%r' % (name, signal.signal_type))
+        expr_node = self.add_signal_node(signal, name)
         for arg in args:
             self.graph.edge(self.signal(arg), expr_node)
 
     def add_bundle(self, signal, fields):
-        expr_node = self.ids[signal]
-        self.graph.node(expr_node, label='{&#8943;}\n%r' % signal.signal_type)
+        expr_node = self.add_signal_node(signal, '{&#8943;}')
         for name, field in fields.items():
             field_id = self.ids.unique()
             self.graph.node(field_id, label='%s=' % name)
@@ -137,15 +146,11 @@ class ModuleToGraph:
             self.graph.edge(self.signal(field), field_id)
 
     def add_field(self, signal, name, bundle):
-        expr_node = self.ids[signal]
-        self.graph.node(
-            expr_node,
-            label='.%s\n%r' % (name, signal.signal_type))
+        expr_node = self.add_signal_node(signal, '.%s' % name)
         self.graph.edge(self.signal(bundle), expr_node)
 
     def add_vec(self, signal, elements):
-        expr_node = self.ids[signal]
-        self.graph.node(expr_node, label='[&#8943;]\n%r' % signal.signal_type)
+        expr_node = self.add_signal_node(signal, '[&#8943;]')
         for i, element in enumerate(elements):
             element_id = self.ids.unique()
             self.graph.node(element_id, label='[%i]=' % i)
@@ -153,44 +158,25 @@ class ModuleToGraph:
             self.graph.edge(self.signal(element), element_id)
 
     def add_const_index(self, signal, index, vec):
-        expr_node = self.ids[signal]
-        self.graph.node(
-            expr_node,
-            label='[%i]\n%r' % (index, signal.signal_type))
+        expr_node = self.add_signal_node(signal, '[%i]' % index)
         self.graph.edge(self.signal(vec), expr_node)
 
     def add_input(self, signal):
-        self.graph.node(
-            self.ids[signal],
-            label='&#8594;&#9725;\n%r' % signal.signal_type,
-            fillcolor='#99ff99',
-        )
+        self.add_signal_node(signal, '&#8594;&#9725;', fillcolor='#99ff99')
 
     def add_output(self, signal):
-        self.graph.node(
-            self.ids[signal],
-            label='&#9725;&#8594;\n%r' % signal.signal_type,
-            fillcolor='#ff9999',
-        )
+        self.add_signal_node(signal, '&#9725;&#8594;', fillcolor='#ff9999')
 
     def add_reg(self, signal):
-        self.graph.node(
-            self.ids[signal],
-            label='&#916;\n%r' % signal.signal_type,
-            fillcolor='#ffff99',
-        )
+        reg_node = self.add_signal_node(signal, '&#916;', fillcolor='#ffff99')
         self.graph.edge(
             self.ids[signal.clk],
-            self.ids[signal],
+            reg_node,
             style='dotted',
         )
 
     def add_wire(self, signal):
-        self.graph.node(
-            self.ids[signal],
-            label='&#8943;\n%r' % signal.signal_type,
-            fillcolor='#9999ff',
-        )
+        self.add_signal_node(signal, '&#8943;', fillcolor='#9999ff')
 
     def add_assignment(self, i, target, condition, value):
         condition_node = self.ids.unique()

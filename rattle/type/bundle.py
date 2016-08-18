@@ -20,6 +20,9 @@ class Bundle(SignalType):
         return "Bundle(%s)" % ', '.join(
             "%s=%r" % item for item in self.signals.items())
 
+    def short_repr(self):
+        return "Bundle(%s)" % ', '.join(self.signals.keys())
+
     @property
     def _signature_tuple(self):
         return (
