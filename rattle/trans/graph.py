@@ -2,6 +2,7 @@ import graphviz
 
 from ..signal import *
 from ..reg import *
+from .. import hashutil
 
 
 class NodeIds:
@@ -10,12 +11,13 @@ class NodeIds:
         self.mapping = {}
 
     def __getitem__(self, obj):
+        key = hashutil.HashInstance(obj)
         try:
-            return self.mapping[obj]
+            return self.mapping[key]
         except KeyError:
             pass
         node_id = self.unique()
-        self.mapping[obj] = node_id
+        self.mapping[key] = node_id
         return node_id
 
     def unique(self):
@@ -82,7 +84,8 @@ class ModuleToGraph:
             self.add_assignment(i, *assignment)
 
     def signal(self, signal):
-        if signal in self.signals:
+        key = hashutil.HashInstance(signal)
+        if key in self.signals:
             return self.ids[signal]
         elif isinstance(signal, Const):
             signal_id = self.ids.unique()
@@ -103,7 +106,7 @@ class ModuleToGraph:
                 self.add_value(signal)
             else:
                 raise RuntimeError('unexpected signal node type')
-            self.signals.add(signal)
+            self.signals.add(key)
             return self.ids[signal]
 
     def add_signal_node(self, signal, description, **kwds):

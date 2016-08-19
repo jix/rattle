@@ -2,6 +2,7 @@ import abc
 
 from . import context
 from . import expr
+from . import hashutil
 from .error import (
     InvalidSignalAccess, InvalidSignalRead, InvalidSignalAssignment,
     NoModuleUnderConstruction)
@@ -201,6 +202,12 @@ class Signal(metaclass=abc.ABCMeta):
             Flip(self.signal_type), expr.Flip(self),
             allow_read=allow_read, allow_assign=allow_assign)
 
+    def __hash__(self):
+        raise TypeError("signals are not hashable")
+
+    def _hash_key(self):
+        return hashutil.HashInstance(self)
+
 
 class Wire(Signal):
     def __init__(self, signal_type):
@@ -262,6 +269,12 @@ class Value(Signal):
             lmodule=module if allow_assign else NotAccessible,
             rmodule=module if allow_read else NotAccessible)
         self.__expr = value_expr
+        self.__hash_key = (
+            Value,
+            allow_read,
+            allow_assign,
+            signal_type,
+            hashutil.hash_key(value_expr))
 
     @property
     def expr(self):
@@ -309,9 +322,22 @@ class Value(Signal):
                 result = fn(*value_expr)
                 if result is not None:
                     return result
-        return Value(
+
+        module = context.current().module
+        # TODO recursive computation of cache_tuple? caching of cache_tuple?
+
+        result = Value(
             signal_type, value_expr,
             allow_read=allow_read, allow_assign=allow_assign)
+        hash_key = hashutil.hash_key(result)
+        try:
+            return module._module_data.common_values[hash_key]
+        except KeyError:
+            module._module_data.common_values[hash_key] = result
+            return result
+
+    def _hash_key(self):
+        return self.__hash_key
 
 
 class ConstantsClass:

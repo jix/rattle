@@ -12,6 +12,7 @@ class ModuleData:
         self.condition_stack = ConditionStack()
         self.implicit_bindings = {}
         self.submodules = []
+        self.common_values = {}
         try:
             self.parent = ctx.module
         except NoModuleUnderConstruction:
