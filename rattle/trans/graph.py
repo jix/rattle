@@ -1,3 +1,4 @@
+import pprint
 import graphviz
 
 from ..signal import *
@@ -88,11 +89,10 @@ class ModuleToGraph:
         if key in self.signals:
             return self.ids[signal]
         elif isinstance(signal, Const):
-            signal_id = self.ids.unique()
-            self.graph.node(
-                signal_id, label='%r\n%r' % (signal.value, signal.signal_type),
+            return self.add_signal_node(
+                signal, pprint.pformat(signal.value, width=40),
+                unique=True,
                 fillcolor='#ff99ff')
-            return signal_id
         else:
             if isinstance(signal, Input):
                 self.add_input(signal)
@@ -109,8 +109,11 @@ class ModuleToGraph:
             self.signals.add(key)
             return self.ids[signal]
 
-    def add_signal_node(self, signal, description, **kwds):
-        expr_node = self.ids[signal]
+    def add_signal_node(self, signal, description, unique=False, **kwds):
+        if unique:
+            expr_node = self.ids.unique()
+        else:
+            expr_node = self.ids[signal]
         self.graph.node(
             expr_node, label='%s\n%s' % (
                 description, signal.signal_type.short_repr()),
