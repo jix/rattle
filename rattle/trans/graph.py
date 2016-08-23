@@ -3,6 +3,7 @@ import graphviz
 
 from ..signal import *
 from ..reg import *
+from ..conditional import ResetCondition
 from .. import hashutil
 
 
@@ -93,6 +94,11 @@ class ModuleToGraph:
                 signal, pprint.pformat(signal.value, width=40),
                 unique=True,
                 fillcolor='#ff99ff')
+        elif isinstance(signal, ResetCondition):
+            signal_id = self.ids.unique()
+            self.graph.node(
+                signal_id, label='reset', fillcolor='#99ffff')
+            return signal_id
         else:
             if isinstance(signal, Input):
                 self.add_input(signal)
@@ -184,9 +190,13 @@ class ModuleToGraph:
     def add_wire(self, signal):
         self.add_signal_node(signal, '&#8943;', fillcolor='#9999ff')
 
-    def add_assignment(self, i, target, condition, value):
+    def add_assignment(self, i, target, priority, condition, value):
         condition_node = self.ids.unique()
-        self.graph.node(condition_node, label=str(i))
+        if priority != 0:
+            label = '%i:%i' % (priority, i)
+        else:
+            label = str(i)
+        self.graph.node(condition_node, label=label)
         self.graph.edge(
             condition_node, self.signal(target),
             arrowhead='empty')

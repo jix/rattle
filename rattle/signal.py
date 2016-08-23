@@ -104,9 +104,9 @@ class Signal(metaclass=abc.ABCMeta):
         value = self.signal_type.convert(value, implicit=True)
         value._access_read()
         module_data = context.current().module._module_data
-        conditions = module_data.condition_stack.current_conditions()
-        module_data.assignments.append((self, conditions, value))
-        self._assignments.append((conditions, value))
+        priority, conditions = module_data.condition_stack.current_conditions()
+        module_data.assignments.append((self, priority, conditions, value))
+        self._assignments.append((priority, conditions, value))
 
     def _auto_lvalue(self, *args, **kwds):
         try:
