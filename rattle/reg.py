@@ -1,10 +1,10 @@
-from .signal import Signal
+from .signal import StorageSignal
 from .type.clock import Clock
 from .implicit import Implicit
 from . import context
 
 
-class Reg(Signal):
+class Reg(StorageSignal):
     def __init__(self, signal_type, *, clk=None):
         # TODO Allow construction with automatic assignment
         # TODO Allow optional enable for automatic assignment
@@ -22,7 +22,6 @@ class Reg(Signal):
             module=module,
             lmodule=module,
             rmodule=module)
-        self.named()
 
     @property
     def clk(self):

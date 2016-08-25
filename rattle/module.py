@@ -8,6 +8,7 @@ from .conditional import ConditionStack
 class ModuleData:
     def __init__(self, ctx, module):
         self.named_signals = []
+        self.storage_signals = []
         self.assignments = []
         self.condition_stack = ConditionStack()
         self.implicit_bindings = {}

@@ -65,7 +65,7 @@ class ModuleToGraph:
             tooltip=' ',
         )
 
-        for signal in module._module_data.named_signals:
+        for signal in module._module_data.storage_signals:
             if isinstance(signal, IOPort):
                 self.signal(signal)
 
@@ -78,6 +78,9 @@ class ModuleToGraph:
                 depth=depth - 1,
                 node_ids=self.ids)
             self.graph.subgraph(submodule_to_dot.graph)
+
+        for signal in module._module_data.storage_signals:
+            self.signal(signal)
 
         for signal in module._module_data.named_signals:
             self.signal(signal)

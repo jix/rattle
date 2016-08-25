@@ -209,7 +209,14 @@ class Signal(metaclass=abc.ABCMeta):
         return hashutil.HashInstance(self)
 
 
-class Wire(Signal):
+class StorageSignal(Signal, metaclass=abc.ABCMeta):
+    def __init__(self, signal_type, *, module, rmodule, lmodule):
+        super().__init__(
+            signal_type, module=module, rmodule=rmodule, lmodule=lmodule)
+        module._module_data.storage_signals.append(self)
+
+
+class Wire(StorageSignal):
     def __init__(self, signal_type):
         # TODO Allow construction with automatic assignment
         module = context.current().module
@@ -218,18 +225,16 @@ class Wire(Signal):
             module=module,
             lmodule=module,
             rmodule=module)
-        self.named()
 
     def __repr__(self):
         return "Wire(%r)" % (self.signal_type)
 
 
-class IOPort(Signal, metaclass=abc.ABCMeta):
+class IOPort(StorageSignal, metaclass=abc.ABCMeta):
     def __init__(self, signal_type, *, module, rmodule, lmodule):
         super().__init__(
             signal_type,
             module=module, rmodule=rmodule, lmodule=lmodule)
-        self.named()
 
 
 class Input(IOPort):
