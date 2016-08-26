@@ -11,6 +11,9 @@ class NodeIds:
     def __init__(self):
         self.counter = 0
         self.mapping = {}
+        self.module_colors = [
+            '#888888', '#ff0000', '#00ff00', '#0000ff'
+        ]
 
     def __getitem__(self, obj):
         key = hashutil.HashInstance(obj)
@@ -27,16 +30,25 @@ class NodeIds:
         self.counter += 1
         return node_id
 
+    def module_color(self):
+        result = self.module_colors[0]
+        self.module_colors.append(self.module_colors.pop(0))
+        return result
+
 
 class ModuleToGraph:
-    def __init__(self, module, depth=1, node_ids=None):
+    def __init__(self, module, depth=1, cluster=True, node_ids=None):
         if depth == 'all':
             depth = -1
         if node_ids is None:
             node_ids = NodeIds()
         self.ids = node_ids
         self.module = module
-        self.graph = graphviz.Digraph('cluster_' + self.ids.unique())
+        if cluster:
+            self.graph = graphviz.Digraph('cluster_' + self.ids.unique())
+        else:
+            self.graph = graphviz.Digraph('subgraph_' + self.ids.unique())
+
         self.signals = set()
 
         self.graph.attr(
@@ -52,12 +64,24 @@ class ModuleToGraph:
             'node',
             height='0.01', width='0.01',
             margin='0.04,0.02',
-            shape='plaintext',
-            style='filled',
             fillcolor='#dddddd',
             fontname='Linux Libertine',
             tooltip=' ',
         )
+
+        if cluster:
+            self.graph.attr(
+                'node',
+                shape='plaintext',
+                style='filled',
+            )
+        else:
+            self.graph.attr(
+                'node',
+                shape='box',
+                style='filled',
+                color=self.ids.module_color(),
+            )
         self.graph.attr(
             'edge',
             fontname='Linux Libertine',
@@ -76,10 +100,18 @@ class ModuleToGraph:
             submodule_to_dot = ModuleToGraph(
                 module=submodule,
                 depth=depth - 1,
+                cluster=cluster,
                 node_ids=self.ids)
             self.graph.subgraph(submodule_to_dot.graph)
 
+            for signal in submodule._module_data.storage_signals:
+                if isinstance(signal, IOPort):
+                    if signal._lowered is not None:
+                        self.add_lowering(signal, signal._lowered[1], True)
+
         for signal in module._module_data.storage_signals:
+            if signal._lowered is not None:
+                self.add_lowering(signal, signal._lowered[0], False)
             self.signal(signal)
 
         for signal in module._module_data.named_signals:
@@ -117,6 +149,21 @@ class ModuleToGraph:
                 raise RuntimeError('unexpected signal node type')
             self.signals.add(key)
             return self.ids[signal]
+
+    def add_lowering(self, signal, lowered_signal, parent):
+        signal_id = self.signal(signal)
+        lowered_id = self.signal(lowered_signal)
+
+        reverse = isinstance(signal, Output) ^ parent
+
+        if reverse:
+            self.graph.edge(
+                lowered_id, signal_id,
+                style='dashed', arrowtail='diamond', dir='back')
+        else:
+            self.graph.edge(
+                signal_id, lowered_id,
+                style='dashed', arrowhead='diamond')
 
     def add_signal_node(self, signal, description, unique=False, **kwds):
         if unique:

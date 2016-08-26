@@ -213,6 +213,7 @@ class StorageSignal(Signal, metaclass=abc.ABCMeta):
     def __init__(self, signal_type, *, module, rmodule, lmodule):
         super().__init__(
             signal_type, module=module, rmodule=rmodule, lmodule=lmodule)
+        self._lowered = None
         module._module_data.storage_signals.append(self)
 
 
