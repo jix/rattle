@@ -132,6 +132,9 @@ class ModuleToGraph:
     def add_value(self, signal):
         getattr(self, 'add_' + signal.expr.fn_name)(signal, *signal.expr)
 
+    def add_flip(self, *args):
+        self.add_commutative('&#8644;', *args)
+
     def add_not(self, *args):
         self.add_commutative('&#172;', *args)
 
