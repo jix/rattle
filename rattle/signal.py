@@ -139,6 +139,9 @@ class Signal(metaclass=abc.ABCMeta):
             *args, **kwds,
             allow_read=allow_read, allow_assign=allow_assign)
 
+    def _auto_rewrite(self, *args, **kwds):
+        return self._auto_lvalue(self.signal_type, *args, **kwds)
+
     def __setitem__(self, key, value):
         if key == slice(None, None, None):
             self.assign(value)

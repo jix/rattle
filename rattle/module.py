@@ -10,6 +10,7 @@ class ModuleData:
         self.named_signals = []
         self.storage_signals = []
         self.assignments = []
+        self.lowered_assignments = []
         self.condition_stack = ConditionStack()
         self.implicit_bindings = {}
         self.submodules = []

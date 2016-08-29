@@ -37,13 +37,16 @@ class NodeIds:
 
 
 class ModuleToGraph:
-    def __init__(self, module, depth=1, cluster=True, node_ids=None):
+    def __init__(
+            self, module, depth=1,
+            cluster=True, lowered_only=False, node_ids=None):
         if depth == 'all':
             depth = -1
         if node_ids is None:
             node_ids = NodeIds()
         self.ids = node_ids
         self.module = module
+        module_data = module._module_data
         if cluster:
             self.graph = graphviz.Digraph('cluster_' + self.ids.unique())
         else:
@@ -89,36 +92,47 @@ class ModuleToGraph:
             tooltip=' ',
         )
 
-        for signal in module._module_data.storage_signals:
+        for signal in module_data.storage_signals:
             if isinstance(signal, IOPort):
-                self.signal(signal)
+                if not (lowered_only and signal._lowered is not None):
+                    self.signal(signal)
 
         if depth == 0:
             return
 
-        for submodule in module._module_data.submodules:
+        for submodule in module_data.submodules:
             submodule_to_dot = ModuleToGraph(
                 module=submodule,
                 depth=depth - 1,
                 cluster=cluster,
+                lowered_only=lowered_only,
                 node_ids=self.ids)
             self.graph.subgraph(submodule_to_dot.graph)
 
             for signal in submodule._module_data.storage_signals:
                 if isinstance(signal, IOPort):
-                    if signal._lowered is not None:
-                        self.add_lowering(signal, signal._lowered[1], True)
+                    if not (lowered_only and signal._lowered is not None):
+                        if signal._lowered is not None:
+                            self.add_lowering(signal, signal._lowered[1], True)
 
-        for signal in module._module_data.storage_signals:
-            if signal._lowered is not None:
-                self.add_lowering(signal, signal._lowered[0], False)
-            self.signal(signal)
+        for signal in module_data.storage_signals:
+            if not (lowered_only and signal._lowered is not None):
+                if signal._lowered is not None:
+                    self.add_lowering(signal, signal._lowered[0], False)
+                self.signal(signal)
 
-        for signal in module._module_data.named_signals:
-            self.signal(signal)
+        if not lowered_only:
+            for signal in module_data.named_signals:
+                self.signal(signal)
 
-        for i, assignment in enumerate(module._module_data.assignments):
-            self.add_assignment(i, *assignment)
+        if not lowered_only:
+            for i, assignment in enumerate(module_data.assignments):
+                self.add_assignment(i, *assignment)
+
+        for i, assignment in enumerate(module_data.lowered_assignments):
+            target, condition, value = assignment
+            self.add_assignment(
+                i, target, 0, condition, value, lowered=not lowered_only)
 
     def signal(self, signal):
         key = hashutil.HashInstance(signal)
@@ -243,19 +257,26 @@ class ModuleToGraph:
     def add_wire(self, signal):
         self.add_signal_node(signal, '&#8943;', fillcolor='#9999ff')
 
-    def add_assignment(self, i, target, priority, condition, value):
+    def add_assignment(
+            self, i, target, priority, condition, value, *,
+            lowered=False):
         condition_node = self.ids.unique()
         if priority != 0:
             label = '%i:%i' % (priority, i)
         else:
             label = str(i)
         self.graph.node(condition_node, label=label)
+
+        color = '#0000ff' if lowered else '#666666'
+
         self.graph.edge(
             condition_node, self.signal(target),
-            arrowhead='empty')
+            arrowhead='empty',
+            color=color)
         self.graph.edge(
             self.signal(value), condition_node,
-            arrowhead='none')
+            arrowhead='none',
+            color=color)
 
         for (polarity, signal) in condition:
             self.graph.edge(

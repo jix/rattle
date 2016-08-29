@@ -1,7 +1,8 @@
 from contextlib import contextmanager
 from ..type import BitsLike, BoolType, Vec, Bundle, Flip
-from ..signal import Value, Wire, Input, Output, IOPort
+from ..signal import Signal, StorageSignal, Value, Wire, Input, Output, IOPort
 from ..reg import Reg
+from ..hashutil import hash_key
 from .. import expr
 
 
@@ -99,12 +100,16 @@ class Lower:
     def __init__(self, module, settings=LowerSettings()):
         self.module = module
 
+        self.reduce_signal_cache = {}
+        self.split_target_cache = {}
+
         for submodule in self.module._module_data.submodules:
             Lower(submodule, settings=settings)
 
         with self.module.reopen():
             # TODO Generate proxy Wires for named Values
             self.lower_storage_signals()
+            self.lower_assignments()
 
     def lower_storage_signals(self):
         for signal in list(self.module._module_data.storage_signals):
@@ -209,3 +214,143 @@ class Lower:
                 signal_type, expr.Vec(lowered_signals_parent))
 
         return result, result_parent
+
+    def lower_assignments(self):
+        for assignment in sorted(
+                self.module._module_data.assignments,
+                key=lambda assignment: assignment[1]):
+            target, _, conditions, value = assignment
+            self.lower_assignment(target, conditions, value)
+
+    def lower_assignment(self, target, conditions, value):
+        target = self.reduce_signal(target, is_target=True)
+        value = self.reduce_signal(value, is_target=False)
+        conditions = tuple(
+            (polarity, self.reduce_signal(condition, is_target=False))
+            for polarity, condition in conditions)
+
+        self.split_assignment(target, conditions, value)
+
+    def reduce_signal(self, signal, is_target):
+        key = hash_key(signal)
+        try:
+            return self.reduce_signal_cache[(is_target, key)]
+        except KeyError:
+            pass
+
+        if isinstance(signal, StorageSignal):
+            if signal._lowered is not None:
+                if signal.module is self.module:
+                    signal = signal._lowered[0]
+                else:
+                    signal = signal._lowered[1]
+                signal = self.reduce_signal(signal, is_target)
+        elif isinstance(signal, Value):
+            signal = getattr(self, 'reduce_signal_' + signal.expr.fn_name)(
+                signal, is_target, *signal.expr)
+
+        self.reduce_signal_cache[(is_target, key)] = signal
+        self.reduce_signal_cache[(is_target, hash_key(signal))] = signal
+
+        return signal
+
+    def reduce_signal_basic_op(self, signal, is_target, *params):
+        return signal._auto_rewrite(type(signal.expr)(*tuple(
+            self.reduce_signal(x, is_target) if isinstance(x, Signal) else x
+            for x in params)))
+
+    reduce_signal_nop = reduce_signal_basic_op  # TODO Handle nop
+    reduce_signal_not = reduce_signal_basic_op
+    reduce_signal_and = reduce_signal_basic_op
+    reduce_signal_or = reduce_signal_basic_op
+    reduce_signal_xor = reduce_signal_basic_op
+    reduce_signal_sign_ext = reduce_signal_basic_op
+    reduce_signal_zero_ext = reduce_signal_basic_op
+
+    def reduce_signal_vec(self, signal, is_target, elements):
+        return signal._auto_rewrite(expr.Vec(tuple(
+            self.reduce_signal(element, is_target)
+            for element in elements)))
+
+    def reduce_signal_bundle(self, signal, is_target, fields):
+        return signal._auto_rewrite(expr.Bundle(dict(
+            (name, self.reduce_signal(field, is_target))
+            for name, field in fields.items())))
+
+    def reduce_signal_const_index(self, signal, is_target, index, x):
+        signal = signal._auto_rewrite(
+            expr.ConstIndex(index, self.reduce_signal(x, is_target=is_target)))
+
+        if (isinstance(signal, Value) and
+                isinstance(signal.expr.x, Value) and
+                isinstance(signal.expr.x.expr, expr.Vec)):
+            return signal.expr.x.expr.elements[index]
+        else:
+            return signal
+
+    def reduce_signal_field(self, signal, is_target, name, x):
+        signal = signal._auto_rewrite(
+            expr.Field(name, self.reduce_signal(x, is_target=is_target)))
+
+        if (isinstance(signal, Value) and
+                isinstance(signal.expr.x, Value) and
+                isinstance(signal.expr.x.expr, expr.Bundle)):
+            return signal.expr.x.expr.fields[name]
+        else:
+            # TODO push field selection inside
+            raise RuntimeError('cannot reduce bundle field selection')
+
+    def reduce_signal_flip(self, signal, is_target, x):
+        signal = signal._auto_rewrite(
+            expr.Flip(self.reduce_signal(x, is_target=not is_target)))
+
+        if (isinstance(signal, Value) and
+                isinstance(signal.expr.x, Value) and
+                isinstance(signal.expr.x.expr, expr.Flip)):
+            return signal.expr.x.expr.x
+        else:
+            return signal
+
+    def split_assignment(self, target, conditions, value):
+        if isinstance(target.signal_type, (BitsLike, BoolType)):
+            for target, extra_conditions in self.split_target(target):
+                self.emit_assignment(
+                    target, conditions + extra_conditions, value)
+        elif isinstance(target.signal_type, Bundle):
+            for field, field_type in target.signal_type.fields.items():
+                subtarget = target._auto_lvalue(
+                    field_type, expr.Field(field, target))
+                subvalue = value._auto_lvalue(
+                    field_type, expr.Field(field, value))
+                self.lower_assignment(subtarget, conditions, subvalue)
+        elif isinstance(target.signal_type, Vec):
+            element_type = target.signal_type.element_type
+            for i in range(target.signal_type.length):
+                subtarget = target._auto_lvalue(
+                    element_type, expr.ConstIndex(i, target))
+                subvalue = value._auto_lvalue(
+                    element_type, expr.ConstIndex(i, value))
+                self.lower_assignment(subtarget, conditions, subvalue)
+        elif isinstance(target.signal_type, Flip):
+            self.lower_assignment(value.flip(), conditions, target.flip())
+        else:
+            raise RuntimeError('cannot split assignment')
+
+    def split_target(self, target):
+        key = hash_key(target)
+        try:
+            return self.split_target_cache[key]
+        except KeyError:
+            pass
+
+        # TODO Handle muxes and recurse
+
+        result = ((target, ()), )
+
+        self.split_target_cache[key] = result
+        return result
+
+    def emit_assignment(self, target, conditions, value):
+        # TODO Handle reset conditions
+        self.module._module_data.lowered_assignments.append(
+            (target, conditions, value))
