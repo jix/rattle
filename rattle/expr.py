@@ -6,7 +6,7 @@ _ops = '''
     Field: name $x
     ConstIndex: index $x
     Flip: x
-    Concat: exprs
+    Concat: parts
     Not: x
     And Or Xor: a b
     SignExt ZeroExt: bits x
