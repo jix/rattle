@@ -3,6 +3,7 @@ from ..type import BitsLike, BoolType, Vec, Bundle, Flip
 from ..signal import Signal, StorageSignal, Value, Wire, Input, Output, IOPort
 from ..reg import Reg
 from ..hashutil import hash_key
+from ..conditional import ResetCondition
 from .. import expr
 
 
@@ -224,14 +225,14 @@ class Lower:
 
     def lower_assignment(self, target, conditions, value):
         target = self.reduce_signal(target, is_target=True)
-        value = self.reduce_signal(value, is_target=False)
+        value = self.reduce_signal(value)
         conditions = tuple(
-            (polarity, self.reduce_signal(condition, is_target=False))
+            (polarity, self.reduce_signal(condition))
             for polarity, condition in conditions)
 
         self.split_assignment(target, conditions, value)
 
-    def reduce_signal(self, signal, is_target):
+    def reduce_signal(self, signal, is_target=False):
         key = hash_key(signal)
         try:
             return self.reduce_signal_cache[(is_target, key)]
@@ -350,7 +351,72 @@ class Lower:
         self.split_target_cache[key] = result
         return result
 
+    def target_storage_signal(self, target):
+        # TODO Memoize
+        if isinstance(target, StorageSignal):
+            return target
+        elif isinstance(target, Value):
+            fn = getattr(self, 'target_storage_signal_' + target.expr.fn_name)
+            return fn(target, *target.expr)
+        else:
+            raise RuntimeError(
+                'cannot determine storage signal for assignment target')
+
+    def target_storage_signal_const_index(self, target, index, x):
+        return self.target_storage_signal(x)
+
     def emit_assignment(self, target, conditions, value):
-        # TODO Handle reset conditions
-        self.module._module_data.lowered_assignments.append(
-            (target, conditions, value))
+        target_storage = self.target_storage_signal(target)
+        if isinstance(target_storage, Reg):
+            clock_signal = target_storage.clk
+            clock_type = clock_signal.signal_type
+
+            positive_reset = any(
+                isinstance(cond, ResetCondition) and pol
+                for pol, cond in conditions)
+            negative_reset = any(
+                isinstance(cond, ResetCondition) and not pol
+                for pol, cond in conditions)
+
+            if positive_reset and negative_reset:
+                return
+
+            conditions = tuple(
+                (pol, cond)
+                for pol, cond in conditions
+                if not isinstance(cond, ResetCondition))
+
+            if clock_type.initial_reset and positive_reset:
+                timing = {'mode': 'initial'}
+                self.module._module_data.lowered_assignments.append(
+                    (timing, target, conditions, value))
+
+            if not clock_type.has_reset and positive_reset:
+                return
+
+            if clock_type.has_reset:
+                if (negative_reset or positive_reset or
+                        clock_type.has_reset == 'async'):
+                    reset = self.reduce_signal(clock_signal.reset)
+                    conditions = ((positive_reset, reset),) + conditions
+
+            if clock_type.is_gated:
+                ce = self.reduce_signal(clock_signal.ce)
+                conditions = ((True, ce),) + conditions
+
+            clk = self.reduce_signal(clock_signal.clk)
+            timing = {'mode': 'reg', 'clk': clk}
+
+            if clock_type.has_reset == 'async':
+                timing['reset'] = reset
+
+            self.module._module_data.lowered_assignments.append(
+                (timing, target, conditions, value))
+        else:
+            if any(
+                    isinstance(cond, ResetCondition)
+                    for pol, cond in conditions):
+                raise RuntimeError('Wire assignment in reset condition')
+            timing = {'mode': 'wire'}
+            self.module._module_data.lowered_assignments.append(
+                (timing, target, conditions, value))

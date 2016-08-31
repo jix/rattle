@@ -46,6 +46,7 @@ class ModuleToGraph:
             node_ids = NodeIds()
         self.ids = node_ids
         self.module = module
+        self.lowered_only = lowered_only
         module_data = module._module_data
         if cluster:
             self.graph = graphviz.Digraph('cluster_' + self.ids.unique())
@@ -130,9 +131,7 @@ class ModuleToGraph:
                 self.add_assignment(i, *assignment)
 
         for i, assignment in enumerate(module_data.lowered_assignments):
-            target, condition, value = assignment
-            self.add_assignment(
-                i, target, 0, condition, value, lowered=not lowered_only)
+            self.add_lowered_assignment(i, *assignment)
 
     def signal(self, signal):
         key = hashutil.HashInstance(signal)
@@ -248,18 +247,17 @@ class ModuleToGraph:
 
     def add_reg(self, signal):
         reg_node = self.add_signal_node(signal, '&#916;', fillcolor='#ffff99')
-        self.graph.edge(
-            self.signal(signal.clk),
-            reg_node,
-            style='dotted',
-        )
+        if not self.lowered_only:
+            self.graph.edge(
+                self.signal(signal.clk),
+                reg_node,
+                style='dotted',
+            )
 
     def add_wire(self, signal):
         self.add_signal_node(signal, '&#8943;', fillcolor='#9999ff')
 
-    def add_assignment(
-            self, i, target, priority, condition, value, *,
-            lowered=False):
+    def add_assignment(self, i, target, priority, condition, value):
         condition_node = self.ids.unique()
         if priority != 0:
             label = '%i:%i' % (priority, i)
@@ -267,7 +265,46 @@ class ModuleToGraph:
             label = str(i)
         self.graph.node(condition_node, label=label)
 
-        color = '#0000ff' if lowered else '#666666'
+        self.graph.edge(
+            condition_node, self.signal(target),
+            arrowhead='empty')
+        self.graph.edge(
+            self.signal(value), condition_node,
+            arrowhead='none')
+
+        for (polarity, signal) in condition:
+            self.graph.edge(
+                self.signal(signal), condition_node,
+                style='dashed',
+                color='#00dd00' if polarity else '#aa0000')
+
+    def add_lowered_assignment(self, i, timing, target, condition, value):
+        condition_node = self.ids.unique()
+        self.graph.node(condition_node, label=str(i))
+
+        if timing['mode'] == 'initial':
+            initial_node = self.ids.unique()
+            self.graph.node(
+                initial_node, label='initial', fillcolor='#99ffff')
+            self.graph.edge(
+                initial_node,
+                condition_node,
+                style='dotted',
+            )
+        elif timing['mode'] == 'reg':
+            self.graph.edge(
+                self.signal(timing['clk']),
+                condition_node,
+                style='dotted',
+            )
+            if 'reset' in timing:
+                self.graph.edge(
+                    self.signal(timing['reset']),
+                    condition_node,
+                    style='dotted',
+                )
+
+        color = '#666666' if self.lowered_only else '#0000ff'
 
         self.graph.edge(
             condition_node, self.signal(target),
