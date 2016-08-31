@@ -249,7 +249,7 @@ class ModuleToGraph:
     def add_reg(self, signal):
         reg_node = self.add_signal_node(signal, '&#916;', fillcolor='#ffff99')
         self.graph.edge(
-            self.ids[signal.clk],
+            self.signal(signal.clk),
             reg_node,
             style='dotted',
         )
