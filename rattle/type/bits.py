@@ -94,6 +94,16 @@ class BitsLike(SignalType, metaclass=SignalMeta):
     def _masked_const(self, value):
         return Const(self, bitmask(self.width) & value)
 
+    @staticmethod
+    def _eval_const_index(result_type, index, x):
+        if isinstance(x, Const):
+            return Const(result_type, bool((x.value >> index) & 1))
+
+    @staticmethod
+    def _eval_const_slice(result_type, start, length, x):
+        if isinstance(x, Const):
+            return Const(result_type, (x.value >> start) & bitmask(length))
+
 
 class BitsLikeMixin(SignalMixin):
     @property
@@ -171,6 +181,52 @@ class BitsLikeMixin(SignalMixin):
             self._access_read()
             return Value._auto(
                 Bits(self.width * count), expr.Repeat(count, self))
+
+    def __getitem__(self, index):
+        from .bool import Bool
+        # TODO Move indexing logic into helper function
+        if index == slice(None, None, None):
+            return super().__getitem__(index)
+        elif isinstance(index, int):
+            if index < 0:
+                index += self.width
+            if index < 0 or index >= self.width:
+                raise IndexError('index out of bounds')
+
+            return self._auto_lvalue(Bool, expr.ConstIndex(index, self))
+        elif isinstance(index, slice) and index.step is None:
+            start = index.start
+            stop = index.stop
+
+            if start is None:
+                start = 0
+
+            if stop is None:
+                stop = self.width
+
+            if isinstance(start, int):
+                if start < 0:
+                    start += self.width
+                if start < 0 or start >= self.width:
+                    raise IndexError('start index out of bounds')
+
+                if (isinstance(stop, list) and len(stop) == 1 and
+                        isinstance(stop[0], int)):
+                    stop = start + stop[0]
+
+                if isinstance(stop, int):
+                    if stop < 0:
+                        stop += self.width
+                    if stop < 0 or stop > self.width:
+                        raise IndexError('stop index out of bounds')
+
+                    length = stop - start
+
+                    return self._auto_lvalue(
+                        Bits(length), expr.ConstSlice(start, length, self))
+
+        # TODO Non-const indexing
+        raise TypeError('Unsupported index type for BitsLike')
 
 BitsLike.signal_mixin = BitsLikeMixin
 

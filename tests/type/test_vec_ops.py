@@ -64,3 +64,25 @@ def test_vec_construction_helper_fn_const(module):
     self.vec = Wire(Vec(2, Bits(8)))
     self.bits = Wire(Bits(8))
     self.vec[:] = vec(5, self.bits)
+
+
+def test_vec_const_slicing(module):
+    self = module
+    self.vec1 = Wire(Vec(4, Bits(8)))
+    self.vec2 = Wire(Vec(8, Bits(8)))
+    assert self.vec1[0:2].signal_type == Vec(2, Bits(8))
+    self.vec1[0:2][:] = self.vec2[2:4]
+    assert self.vec1[-3:].signal_type == Vec(3, Bits(8))
+    self.vec1[-3:][:] = self.vec2[5:]
+    assert self.vec1[1:[2]].signal_type == Vec(2, Bits(8))
+    self.vec1[1:[2]][:] = self.vec2[5:[2]]
+
+
+def test_vec_slice_access_const():
+    MyVec = Vec(8, Bits(8))
+    values = [1, 2, 3, 4, 5, 6, 7, 8]
+    my_vec = MyVec[values]
+    assert my_vec[0:3].value == (1, 2, 3)
+    assert my_vec[4:].value == (5, 6, 7, 8)
+    assert my_vec[:4].value == (1, 2, 3, 4)
+    assert my_vec[2:[4]].value == (3, 4, 5, 6)

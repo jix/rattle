@@ -239,6 +239,11 @@ class ModuleToGraph:
         expr_node = self.add_signal_node(signal, '[%i]' % index)
         self.graph.edge(self.signal(vec), expr_node)
 
+    def add_const_slice(self, signal, start, length, vec):
+        expr_node = self.add_signal_node(
+            signal, '[%i:[%i]]' % (start, length))
+        self.graph.edge(self.signal(vec), expr_node)
+
     def add_concat(self, signal, parts):
         expr_node = self.add_signal_node(signal, '++')
         for i, element in enumerate(parts):

@@ -48,6 +48,11 @@ class Vec(SignalType):
         if isinstance(x, Const):
             return Const(result_type, x.value[index])
 
+    @staticmethod
+    def _eval_const_slice(result_type, start, length, x):
+        if isinstance(x, Const):
+            return Const(result_type, x.value[start:start + length])
+
 
 class VecMixin(SignalMixin):
     @property
@@ -55,6 +60,7 @@ class VecMixin(SignalMixin):
         return self.signal_type.element_type
 
     def __getitem__(self, index):
+        # TODO Move indexing logic into helper function
         if index == slice(None, None, None):
             return super().__getitem__(index)
         elif isinstance(index, int):
@@ -65,9 +71,40 @@ class VecMixin(SignalMixin):
 
             return self._auto_lvalue(
                 self.element_type, expr.ConstIndex(index, self))
-        else:
-            # TODO Non-const indexing
-            raise TypeError('Vec index must be an integer')
+        elif isinstance(index, slice) and index.step is None:
+            start = index.start
+            stop = index.stop
+
+            if start is None:
+                start = 0
+
+            if stop is None:
+                stop = len(self)
+
+            if isinstance(start, int):
+                if start < 0:
+                    start += len(self)
+                if start < 0 or start >= len(self):
+                    raise IndexError('start index out of bounds')
+
+                if (isinstance(stop, list) and len(stop) == 1 and
+                        isinstance(stop[0], int)):
+                    stop = start + stop[0]
+
+                if isinstance(stop, int):
+                    if stop < 0:
+                        stop += len(self)
+                    if stop < 0 or stop > len(self):
+                        raise IndexError('stop index out of bounds')
+
+                    length = stop - start
+
+                    return self._auto_lvalue(
+                        Vec(length, self.signal_type.element_type),
+                        expr.ConstSlice(start, length, self))
+
+        # TODO Non-const indexing
+        raise TypeError('Vec index must be an integer')
 
     def __len__(self):
         return self.signal_type.length
