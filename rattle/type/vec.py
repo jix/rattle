@@ -64,7 +64,7 @@ class VecMixin(SignalMixin):
                 raise IndexError('Vec index out of bounds')
 
             return self._auto_lvalue(
-                self.element_type, expr.ConstIndex(index, self))._deflip()
+                self.element_type, expr.ConstIndex(index, self))
         else:
             # TODO Non-const indexing
             raise TypeError('Vec index must be an integer')
