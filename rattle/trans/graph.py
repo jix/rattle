@@ -248,7 +248,7 @@ class ModuleToGraph:
         expr_node = self.add_signal_node(signal, '++')
         for i, element in enumerate(parts):
             element_id = self.ids.unique()
-            self.graph.node(element_id, label='%i' % i)
+            self.graph.node(element_id, label='#%i' % i)
             self.graph.edge(element_id, expr_node)
             self.graph.edge(self.signal(element), element_id)
 
