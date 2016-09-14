@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from ..type import BitsLike, BoolType, Vec, Bundle, Flip
+from ..type import BitsLike, Bits, BoolType, Vec, Bundle, Flip
 from ..signal import Signal, StorageSignal, Value, Wire, Input, Output, IOPort
 from ..reg import Reg
 from ..hashutil import hash_key
@@ -261,6 +261,8 @@ class Lower:
             for x in params)))
 
     reduce_signal_nop = reduce_signal_basic_op  # TODO Handle nop
+    reduce_signal_const_slice = reduce_signal_basic_op  # TODO Needs reduction?
+    reduce_signal_concat = reduce_signal_basic_op
     reduce_signal_not = reduce_signal_basic_op
     reduce_signal_and = reduce_signal_basic_op
     reduce_signal_or = reduce_signal_basic_op
@@ -313,11 +315,44 @@ class Lower:
             return signal
 
     def split_assignment(self, target, conditions, value):
-        if isinstance(target.signal_type, (BitsLike, BoolType)):
-            for target, extra_conditions in self.split_target(target):
-                self.emit_assignment(
-                    target, conditions + extra_conditions, value)
-        elif isinstance(target.signal_type, Bundle):
+        if self.is_valid_verilog_target(target):
+            self.emit_assignment(target, conditions, value)
+        elif self.split_aggregate(target, conditions, value):
+            return
+        elif self.split_muxes(target, conditions, value):
+            return
+        else:
+            raise RuntimeError('cannot split assignment')
+        # TODO Turn dynamic indexing into muxes
+
+    def is_valid_verilog_target(self, target):
+        # TODO Memoization
+        if not self.is_valid_verilog_target_type(target.signal_type):
+            return False
+        return self.is_valid_verilog_target_subexpr(target)
+
+    def is_valid_verilog_target_subexpr(self, target):
+        # TODO Memoization
+        if not self.is_valid_verilog_target_subexpr_type(target.signal_type):
+            return False
+
+        elif isinstance(target, StorageSignal):
+            return True
+        elif isinstance(target, Value):
+            if isinstance(target.expr, (expr.ConstIndex, expr.ConstSlice)):
+                return self.is_valid_verilog_target_subexpr(target.expr.x)
+
+    @staticmethod
+    def is_valid_verilog_target_type(signal_type):
+        return isinstance(signal_type, (BoolType, BitsLike))
+
+    def is_valid_verilog_target_subexpr_type(self, signal_type):
+        while isinstance(signal_type, Vec):
+            signal_type = signal_type.element_type
+        return self.is_valid_verilog_target_type(signal_type)
+
+    def split_aggregate(self, target, conditions, value):
+        if isinstance(target.signal_type, Bundle):
             for field, field_type in target.signal_type.fields.items():
                 subtarget = target._auto_lvalue(
                     field_type, expr.Field(field, target))
@@ -332,24 +367,30 @@ class Lower:
                 subvalue = value._auto_lvalue(
                     element_type, expr.ConstIndex(i, value))
                 self.lower_assignment(subtarget, conditions, subvalue)
+        elif isinstance(target.signal_type, BitsLike):
+            if (isinstance(target, Value) and
+                    isinstance(target.expr, expr.Concat)):
+                pos = 0
+                for field in target.expr.parts:
+                    field_len = field.signal_type.width
+                    subvalue = value._auto_lvalue(
+                        Bits(field_len),
+                        expr.ConstSlice(pos, field_len, value))
+                    pos += field_len
+                    self.lower_assignment(field, conditions, subvalue)
+            else:
+                return False
         elif isinstance(target.signal_type, Flip):
+            # TODO Check if this is the right place to resolve flips
             self.lower_assignment(value.flip(), conditions, target.flip())
         else:
-            raise RuntimeError('cannot split assignment')
+            return False
+        return True
 
-    def split_target(self, target):
-        key = hash_key(target)
-        try:
-            return self.split_target_cache[key]
-        except KeyError:
-            pass
-
-        # TODO Handle muxes and recurse
-
-        result = ((target, ()), )
-
-        self.split_target_cache[key] = result
-        return result
+    @staticmethod
+    def split_muxes(target, conditions, value):
+        # TODO Implement
+        return False
 
     def target_storage_signal(self, target):
         # TODO Memoize
