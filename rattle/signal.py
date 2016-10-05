@@ -315,22 +315,12 @@ class Value(Signal):
     def _auto(
             signal_type, value_expr, *,
             allow_read=True, allow_assign=False):
-        if value_expr.eval_field:
-            target = getattr(value_expr, value_expr.eval_field)
-            fn = getattr(target.signal_type, value_expr.eval_fn_name)
-            result = fn(signal_type, *value_expr)
-            if result is not None:
-                return result
-        else:
-            fn = value_expr.eval_fn_name
-            try:
-                fn = getattr(signal_type, fn)
-            except AttributeError:
-                pass
-            else:
-                result = fn(*value_expr)
-                if result is not None:
-                    return result
+        from .eval import const_expr_eval
+
+        raw_value = const_expr_eval.eval_value(value_expr)
+
+        if raw_value is not None:
+            return Const(signal_type, raw_value)
 
         module = context.current().module
         # TODO recursive computation of cache_tuple? caching of cache_tuple?
@@ -357,20 +347,24 @@ Constants = ConstantsClass()
 
 class Const(Signal):
     @classmethod
-    def _mixin_parameters(cls, signal_type, value):
+    def _mixin_parameters(cls, signal_type, raw_value):
         return _check_signal_type(signal_type).const_mixin, signal_type
 
-    def __init__(self, signal_type, value):
+    def __init__(self, signal_type, raw_value):
         super().__init__(
             signal_type,
             module=Constants,
             lmodule=NotAccessible,
             rmodule=Constants)
-        self.__value = value
+        self.__raw_value = raw_value
+
+    @property
+    def raw_value(self):
+        return self.__raw_value
 
     @property
     def value(self):
-        return self.__value
+        return self.raw_value
 
     def __repr__(self):
         return "%r[%r]" % (self.signal_type, self.value)

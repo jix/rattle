@@ -2,6 +2,7 @@ from .type import *
 
 from .. import expr
 from ..signal import Value, Const
+from ..bitvec import bv, ubool
 
 
 class BoolType(SignalType):
@@ -14,35 +15,8 @@ class BoolType(SignalType):
 
     def _const_signal(self, value, *, implicit):
         # pylint: disable=unused-variable
-        return Const(Bool, bool(value))
+        return Const(Bool, bv(ubool(value)))
 
-    @staticmethod
-    def _eval_and(a, b):
-        for (x, y) in ((a, b), (b, a)):
-            if isinstance(x, Const):
-                if x.value:
-                    return y
-                else:
-                    return Bool[False]
-
-    @staticmethod
-    def _eval_or(a, b):
-        for (x, y) in ((a, b), (b, a)):
-            if isinstance(x, Const):
-                if x.value:
-                    return Bool[True]
-                else:
-                    return y
-
-    @staticmethod
-    def _eval_xor(a, b):
-        if all(isinstance(x, Const) for x in (a, b)):
-            return Bool[a.value ^ b.value]
-
-    @staticmethod
-    def _eval_not(x):
-        if isinstance(x, Const):
-            return Bool[not x.value]
 
 Bool = BoolType()
 BoolType.__new__ = lambda cls: Bool
@@ -89,5 +63,9 @@ class BoolMixin(SignalMixin):
         else:
             self._access_read()
             return Value._auto(Bits(count), expr.Repeat(count, self))
+
+    @property
+    def value(self):
+        return self.raw_value[0]
 
 BoolType.signal_mixin = BoolMixin

@@ -2,7 +2,8 @@ import abc
 
 from .type import *
 from .bits import *
-from ..bitmath import bitmask
+from ..bitvec import Undef
+from ..bitmath import signext
 
 
 class Int(BitsLike, metaclass=SignalMeta):
@@ -82,6 +83,13 @@ class UIntMixin(IntMixin):
         self._access_read()
         return Value._auto(UInt(width), expr.ZeroExt(width, self))
 
+    @property
+    def value(self):
+        if self.raw_value.mask == 0:
+            return self.raw_value.value
+        else:
+            return Undef
+
 UInt.signal_mixin = UIntMixin
 
 
@@ -102,7 +110,7 @@ class SInt(Int):
                 width = (~value).bit_length() + 1
             else:
                 width = value.bit_length() + 1
-            return Const(cls(width), value)
+            return Const(cls(width), BitVec(width, value))
         else:
             return super()._generic_const_signal(value, implicit=implicit)
 
@@ -118,13 +126,17 @@ class SInt(Int):
             return signal.as_sint()
         return super()._generic_convert(signal, implicit=implicit)
 
-    def _masked_const(self, value):
-        return Const(self, signext(self.width, value))
-
 
 class SIntMixin(IntMixin):
     def _extend_unchecked(self, width):
         self._access_read()
         return Value._auto(SInt(width), expr.SignExt(width, self))
+
+    @property
+    def value(self):
+        if self.raw_value.mask == 0:
+            return signext(self.raw_value.width, self.raw_value.value)
+        else:
+            return Undef
 
 SInt.signal_mixin = SIntMixin

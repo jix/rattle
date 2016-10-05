@@ -47,3 +47,7 @@ def signext(bits, value):
 def bitrepeat(count, width, value):
     value &= bitmask(width)
     return sum(value << (width * i) for i in range(count))
+
+
+def bitindex(value, index):
+    return (value >> index) & 1

@@ -2,7 +2,7 @@ from .type import *
 from .. import expr
 from ..signal import Value, Const
 from ..error import ConversionNotImplemented
-from ..bitmath import signext, bitmask, bitrepeat
+from ..bitvec import BitVec, bv
 
 
 class BitsLike(SignalType, metaclass=SignalMeta):
@@ -40,69 +40,20 @@ class BitsLike(SignalType, metaclass=SignalMeta):
                 raise ValueError(
                     "cannot convert negative value to %s" % cls.__name__)
             width = value.bit_length()
-            return Const(cls(width), value)
+            value = BitVec(width, value)
+        elif isinstance(value, str):
+            value = bv(value)
+
+        if isinstance(value, BitVec):
+            return Const(cls(value.width), value)
         else:
             return super()._generic_const_signal(value, implicit=implicit)
 
     def _const_signal(self, value, *, implicit):
-        if isinstance(value, int):
+        if isinstance(value, (int, BitVec)):
             return self.__class__[value].extend(self.width)
         else:
             return super()._const_signal(value, implicit=implicit)
-
-    def _eval_nop(self, x):
-        if isinstance(x, Const):
-            return self._masked_const(x.value)
-
-    def _eval_zero_ext(self, width, x):
-        if isinstance(x, Const):
-            assert self.width == width
-            return self._masked_const(bitmask(x.signal_type.width) & x.value)
-
-    def _eval_sign_ext(self, width, x):
-        if isinstance(x, Const):
-            assert self.width == width
-            return self._masked_const(signext(x.signal_type.width, x.value))
-
-    def _eval_not(self, x):
-        if isinstance(x, Const):
-            return self._masked_const(~x.value)
-
-    def _eval_and(self, a, b):
-        if isinstance(a, Const) and isinstance(b, Const):
-            return self._masked_const(a.value & b.value)
-
-    def _eval_or(self, a, b):
-        if isinstance(a, Const) and isinstance(b, Const):
-            return self._masked_const(a.value | b.value)
-
-    def _eval_xor(self, a, b):
-        if isinstance(a, Const) and isinstance(b, Const):
-            return self._masked_const(a.value ^ b.value)
-
-    def _eval_repeat(self, count, x):
-        from .bool import Bool
-        if isinstance(x, Const):
-            if x.signal_type == Bool:
-                assert self.width == count
-                return Bits(count)[x.value * bitmask(count)]
-            else:
-                width = count * x.width
-                assert self.width == width
-                return Bits(width)[bitrepeat(count, x.width, x.value)]
-
-    def _masked_const(self, value):
-        return Const(self, bitmask(self.width) & value)
-
-    @staticmethod
-    def _eval_const_index(result_type, index, x):
-        if isinstance(x, Const):
-            return Const(result_type, bool((x.value >> index) & 1))
-
-    @staticmethod
-    def _eval_const_slice(result_type, start, length, x):
-        if isinstance(x, Const):
-            return Const(result_type, (x.value >> start) & bitmask(length))
 
 
 class BitsLikeMixin(SignalMixin):

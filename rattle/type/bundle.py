@@ -1,7 +1,7 @@
 import collections
 
 from .. import expr
-from ..signal import Value, Const
+from ..signal import Value
 from .type import *
 
 
@@ -53,16 +53,6 @@ class Bundle(SignalType):
             return Value._auto_concat_lvalue(
                 field_signals.values(), self, expr.Bundle(field_signals))
         return NotImplemented
-
-    def _eval_bundle(self, fields):
-        if all(isinstance(field, Const) for field in fields.values()):
-            values = dict((key, field.value) for key, field in fields.items())
-            return Const(self, values)
-
-    @staticmethod
-    def _eval_field(result_type, name, x):
-        if isinstance(x, Const):
-            return Const(result_type, x.value[name])
 
 
 class BundleMixin(SignalMixin):
