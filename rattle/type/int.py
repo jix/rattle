@@ -2,7 +2,7 @@ import abc
 
 from .type import *
 from .bits import *
-from ..bitvec import Undef
+from ..bitvec import Unk
 from ..bitmath import signext
 
 
@@ -88,7 +88,7 @@ class UIntMixin(IntMixin):
         if self.raw_value.mask == 0:
             return self.raw_value.value
         else:
-            return Undef
+            return Unk
 
 UInt.signal_mixin = UIntMixin
 
@@ -137,6 +137,6 @@ class SIntMixin(IntMixin):
         if self.raw_value.mask == 0:
             return signext(self.raw_value.width, self.raw_value.value)
         else:
-            return Undef
+            return Unk
 
 SInt.signal_mixin = SIntMixin

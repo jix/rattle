@@ -46,7 +46,7 @@ class BitVec:
             if index < 0 or index >= len(self):
                 raise IndexError('BitVec index out of range')
             if bitindex(self.mask, index):
-                return Undef
+                return Unk
             else:
                 return bool(bitindex(self.value, index))
         elif isinstance(index, slice):
@@ -105,7 +105,7 @@ class BitVec:
         if diff.value != 0:
             return False
         elif diff.mask != 0:
-            return Undef
+            return Unk
         else:
             return True
 
@@ -123,24 +123,24 @@ class BitVec:
             bitrepeat(count, self.width, self.mask))
 
 
-class UndefClass:
+class UnkClass:
     def __hash__(self):
-        raise TypeError('Undef is unhashable')
+        raise TypeError('Unk is unhashable')
 
     def __eq__(self, other):
-        return Undef
+        return Unk
 
     def __repr__(self):
-        return 'Undef'
+        return 'Unk'
 
     def __bool__(self):
         # TODO Specific error class
-        raise RuntimeError('cannot convert Undef value to bool')
+        raise RuntimeError('cannot convert Unk value to bool')
 
     # TODO Bit operations
 
 
-Undef = UndefClass()
+Unk = UnkClass()
 
 
 def bv(value):
@@ -148,7 +148,7 @@ def bv(value):
         return BitVec(1, 1)
     elif value is False:
         return BitVec(1, 0)
-    elif value is Undef:
+    elif value is Unk:
         return BitVec(1, 0, 1)
     elif isinstance(value, int):
         return BitVec(value.bit_length(), value)
@@ -169,8 +169,8 @@ def bv(value):
 def ubool(value):
     if value is None:
         return False
-    elif isinstance(value, UndefClass):
-        return Undef
+    elif isinstance(value, UnkClass):
+        return Unk
     elif isinstance(value, (int, bool)):
         return bool(value)
     elif isinstance(value, BitVec):
