@@ -14,7 +14,7 @@ def test_single_when(module):
     module.reg2 = Reg(Bool)
 
     with when(module.condition):
-        module.reg[:] = module.reg ^ Bits[0b1010101010]
+        module.reg[:] = module.reg ^ Bits['1010101010']
 
     module.reg2[:] = module.condition
 
@@ -27,9 +27,9 @@ def test_when_otherwise(module):
     module.condition = Input(Bool)
 
     with when(module.condition):
-        module.reg[:] = module.reg ^ Bits[0b1010101010]
+        module.reg[:] = module.reg ^ Bits['1010101010']
     with otherwise:
-        module.reg[:] = module.reg ^ Bits[0b1100110011]
+        module.reg[:] = module.reg ^ Bits['1100110011']
 
     assert module.reg._assignments[0][1] == ((True, module.condition),)
     assert module.reg._assignments[1][1] == ((False, module.condition),)
@@ -41,9 +41,9 @@ def test_when_elwhen(module):
     module.condition_b = Input(Bool)
 
     with when(module.condition_a):
-        module.reg[:] = module.reg ^ Bits[0b1010101010]
+        module.reg[:] = module.reg ^ Bits['1010101010']
     with elwhen(module.condition_b):
-        module.reg[:] = module.reg ^ Bits[0b0101010101]
+        module.reg[:] = module.reg ^ Bits['0101010101']
 
     assert module.reg._assignments[0][1] == (
         (True, module.condition_a),
@@ -60,11 +60,11 @@ def test_when_elwhen_otherwise(module):
     module.condition_b = Input(Bool)
 
     with when(module.condition_a):
-        module.reg[:] = module.reg ^ Bits[0b1010101010]
+        module.reg[:] = module.reg ^ Bits['1010101010']
     with elwhen(module.condition_b):
-        module.reg[:] = module.reg ^ Bits[0b0101010101]
+        module.reg[:] = module.reg ^ Bits['0101010101']
     with otherwise:
-        module.reg[:] = module.reg ^ Bits[0b1100110011]
+        module.reg[:] = module.reg ^ Bits['1100110011']
 
     assert module.reg._assignments[0][1] == (
         (True, module.condition_a),
@@ -87,12 +87,12 @@ def test_nested_when(module):
 
     with when(module.condition_a):
         with when(module.condition_b):
-            module.reg[:] = module.reg ^ Bits[0b1010101010]
+            module.reg[:] = module.reg ^ Bits['1010101010']
     with otherwise:
         with when(module.condition_b):
-            module.reg[:] = module.reg ^ Bits[0b0101010101]
+            module.reg[:] = module.reg ^ Bits['0101010101']
         with elwhen(module.condition_c):
-            module.reg[:] = module.reg ^ Bits[0b1100110011]
+            module.reg[:] = module.reg ^ Bits['1100110011']
 
     assert module.reg._assignments[0][1] == (
         (True, module.condition_a),

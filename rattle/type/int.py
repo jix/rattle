@@ -25,8 +25,7 @@ class Int(BitsLike, metaclass=SignalMeta):
 class IntMixin(BitsLikeMixin):
     def _convert(self, signal_type, *, implicit):
         if signal_type.__class__ == Bits:
-            if signal_type.width >= self.width:
-                return self.extend(signal_type.width).as_bits()
+            return self.resize(signal_type.width).as_bits()
         return super()._convert(signal_type, implicit=implicit)
 
     def _generic_convert(self, signal_type_class, *, implicit):
@@ -36,6 +35,47 @@ class IntMixin(BitsLikeMixin):
 
     def as_bits(self):
         return self._auto_lvalue(Bits(self.width), expr.Nop(self))
+
+    def __and__(self, other):
+        if not isinstance(other.signal_type, Int):
+            return NotImplemented
+        a, b = self, other
+        if a.signal_type.signed & b.signal_type.signed:
+            result_type = SInt
+            result_width = max(a.width, b.width)
+        else:
+            result_type = UInt
+
+        if a.signal_type.signed:
+            result_width = b.width
+        elif b.signal_type.signed:
+            result_width = a.width
+        else:
+            result_width = min(a.width, b.width)
+        a, b = a.resize(result_width), b.resize(result_width)
+        a._access_read()
+        b._access_read()
+        return Value._auto(result_type(result_width), expr.And(a, b))
+
+    def _binary_bitop(self, other, op):
+        if not isinstance(other.signal_type, Int):
+            return NotImplemented
+        a, b = self, other
+        if a.signal_type.signed & b.signal_type.signed:
+            result_type = SInt
+            result_width = max(a.width, b.width)
+        elif a.signal_type.signed | b.signal_type.signed:
+            result_type = SInt
+            result_width = max(
+                a.width + b.signal_type.signed, b.width + a.signal_type.signed)
+        else:
+            result_type = UInt
+            result_width = max(a.width, b.width)
+        a, b = a.extend(result_width), b.extend(result_width)
+        a._access_read()
+        b._access_read()
+        return Value._auto(result_type(result_width), op(a, b))
+
 
 Int.signal_mixin = IntMixin
 
@@ -53,8 +93,7 @@ class UInt(Int):
 
     def _convert(self, signal, *, implicit):
         if not implicit and signal.signal_type.__class__ == Bits:
-            if self.width >= signal.width:
-                return signal.extend(self.width).as_uint()
+            return signal.resize(self.width).as_uint()
         return super()._convert(signal, implicit=implicit)
 
     @classmethod
@@ -67,8 +106,9 @@ class UInt(Int):
 class UIntMixin(IntMixin):
     def _convert(self, signal_type, *, implicit):
         if signal_type.__class__ == SInt:
-            if signal_type.width >= self.width + 1:
-                return self.extend(signal_type.width).as_bits().as_sint()
+            return self.resize(signal_type.width).as_bits().as_sint()
+        elif signal_type.__class__ == UInt:
+            return self.resize(signal_type.width)
         return super()._convert(signal_type, implicit=implicit)
 
     def _generic_convert(self, signal_type_class, *, implicit):
@@ -82,6 +122,9 @@ class UIntMixin(IntMixin):
     def _extend_unchecked(self, width):
         self._access_read()
         return Value._auto(UInt(width), expr.ZeroExt(width, self))
+
+    def _truncate_unchecked(self, width):
+        return self._auto_lvalue(UInt(width), expr.ConstSlice(0, width, self))
 
     @property
     def value(self):
@@ -114,10 +157,15 @@ class SInt(Int):
         else:
             return super()._generic_const_signal(value, implicit=implicit)
 
+    def _const_signal(self, value, *, implicit):
+        if isinstance(value, int):
+            return SInt[value].extend(self.width)
+        else:
+            return super()._const_signal(value, implicit=implicit)
+
     def _convert(self, signal, *, implicit):
         if not implicit and signal.signal_type.__class__ == Bits:
-            if self.width >= signal.width:
-                return signal.extend(self.width).as_sint()
+            return signal.resize(self.width).as_sint()
         return super()._convert(signal, implicit=implicit)
 
     @classmethod
@@ -128,9 +176,19 @@ class SInt(Int):
 
 
 class SIntMixin(IntMixin):
+    def _convert(self, signal_type, *, implicit):
+        if signal_type.__class__ == UInt:
+            return self.resize(signal_type.width).as_bits().as_uint()
+        elif signal_type.__class__ == SInt:
+            return self.resize(signal_type.width)
+        return super()._convert(signal_type, implicit=implicit)
+
     def _extend_unchecked(self, width):
         self._access_read()
         return Value._auto(SInt(width), expr.SignExt(width, self))
+
+    def _truncate_unchecked(self, width):
+        return self._auto_lvalue(SInt(width), expr.ConstSlice(0, width, self))
 
     @property
     def value(self):

@@ -50,8 +50,22 @@ class BitsLike(SignalType, metaclass=SignalMeta):
             return super()._generic_const_signal(value, implicit=implicit)
 
     def _const_signal(self, value, *, implicit):
-        if isinstance(value, (int, BitVec)):
-            return self.__class__[value].extend(self.width)
+        if isinstance(value, int):
+            if value < 0:
+                raise ValueError(
+                    "cannot convert negative value to %s" % self)
+            width = value.bit_length()
+            if width > self.width:
+                raise ValueError(
+                    "constant too large for %r" % self)
+            value = BitVec(self.width, value)
+        elif isinstance(value, str):
+            value = bv(value)
+        if isinstance(value, BitVec):
+            if value.width != self.width:
+                raise ValueError(
+                    "constant of wrong size (%i) for %r" % (value.width, self))
+            return Const(self, value)
         else:
             return super()._const_signal(value, implicit=implicit)
 
@@ -72,39 +86,28 @@ class BitsLikeMixin(SignalMixin):
         self._access_read()
         return Value._auto(self.signal_type, expr.Not(self))
 
-    def _binary_bitop(self, other, op, const_op):
-        generic_type = type(self.signal_type)
-        try:
-            other = self.signal_type.convert(other, implicit=True)
-        except ConversionNotImplemented:
-            try:
-                other = generic_type.generic_convert(other, implicit=True)
-            except ConversionNotImplemented:
-                return NotImplemented
-        width = max(self.width, other.width)
-        a = self.extend(width)
-        b = other.extend(width)
-        a._access_read()
-        b._access_read()
-        if isinstance(a, Const) and isinstance(b, Const):
-            return generic_type(width)[const_op(a.value, b.value)]
+    def _binary_bitop(self, other, op):
+        if other.signal_type == self.signal_type:
+            self._access_read()
+            other._access_read()
+            return Value._auto(self.signal_type, op(self, other))
         else:
-            return Value._auto(generic_type(width), op(a, b))
+            return NotImplemented
 
     def __and__(self, other):
-        return self._binary_bitop(other, expr.And, lambda a, b: a & b)
+        return self._binary_bitop(other, expr.And)
 
     def __rand__(self, other):
         return self.__and__(other)
 
     def __or__(self, other):
-        return self._binary_bitop(other, expr.Or, lambda a, b: a | b)
+        return self._binary_bitop(other, expr.Or)
 
     def __ror__(self, other):
         return self.__or__(other)
 
     def __xor__(self, other):
-        return self._binary_bitop(other, expr.Xor, lambda a, b: a ^ b)
+        return self._binary_bitop(other, expr.Xor)
 
     def __rxor__(self, other):
         return self.__xor__(other)
@@ -119,9 +122,30 @@ class BitsLikeMixin(SignalMixin):
         else:
             return self._extend_unchecked(width)
 
+    def truncate(self, width):
+        if not isinstance(width, int):
+            raise TypeError('signal width must be an integer')
+        if width > self.width:
+            raise ValueError('truncated width larger than input width')
+        elif width == self.width:
+            return self
+        else:
+            return self._truncate_unchecked(width)
+
+    def resize(self, width):
+        if not isinstance(width, int):
+            raise TypeError('signal width must be an integer')
+        elif width < self.width:
+            return self.truncate(width)
+        else:
+            return self.extend(width)
+
     def _extend_unchecked(self, width):
         self._access_read()
         return Value._auto(Bits(width), expr.ZeroExt(width, self))
+
+    def _truncate_unchecked(self, width):
+        return self._auto_lvalue(Bits(width), expr.ConstSlice(0, width, self))
 
     def repeat(self, count):
         if not isinstance(count, int):
