@@ -85,14 +85,20 @@ class BitVec:
         return BitVec(self.width, ~self.value, self.mask)
 
     def __or__(self, other):
+        if not isinstance(other, BitVec):
+            return NotImplemented
         value = self.value | other.value
         mask = (self.mask | other.mask) & ~value
         return BitVec(max(self.width, other.width), value, mask)
 
     def __and__(self, other):
+        if not isinstance(other, BitVec):
+            return NotImplemented
         return ~(~self | ~other)
 
     def __xor__(self, other):
+        if not isinstance(other, BitVec):
+            return NotImplemented
         return BitVec(
             max(self.width, other.width),
             self.value ^ other.value,
