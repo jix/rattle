@@ -126,6 +126,9 @@ class UIntMixin(IntMixin):
     def _truncate_unchecked(self, width):
         return self._auto_lvalue(UInt(width), expr.ConstSlice(0, width, self))
 
+    def __invert__(self):
+        return ~self.as_sint()
+
     @property
     def value(self):
         if self.raw_value.mask == 0:
