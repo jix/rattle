@@ -104,6 +104,23 @@ class BitVec:
             self.value ^ other.value,
             self.mask | other.mask)
 
+    def __add__(self, other):
+        if not isinstance(other, BitVec):
+            return NotImplemented
+        low = self.value + other.value
+        high = low + self.mask + other.mask
+        mask = (low ^ high) | self.mask | other.mask
+        return BitVec(max(self.width, other.width), low, mask)
+
+    def __sub__(self, other):
+        if not isinstance(other, BitVec):
+            return NotImplemented
+        diff = self.value - other.value
+        low = diff - other.mask
+        high = diff + self.mask
+        mask = (low ^ high) | self.mask | other.mask
+        return BitVec(max(self.width, other.width), low, mask)
+
     def __eq__(self, other):
         if isinstance(other, int):
             return self == bv(other)
