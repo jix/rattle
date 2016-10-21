@@ -139,7 +139,36 @@ class UnkClass:
         # TODO Specific error class
         raise RuntimeError('cannot convert Unk value to bool')
 
-    # TODO Bit operations
+    def __and__(self, other):
+        if other is True or isinstance(other, UnkClass):
+            return Unk
+        elif other is False:
+            return False
+        else:
+            return NotImplemented
+
+    def __rand__(self, other):
+        return self & other
+
+    def __or__(self, other):
+        if other is False or isinstance(other, UnkClass):
+            return Unk
+        elif other is True:
+            return True
+        else:
+            return NotImplemented
+
+    def __ror__(self, other):
+        return self & other
+
+    def __xor__(self, other):
+        if isinstance(other, (bool, UnkClass)):
+            return Unk
+        else:
+            return NotImplemented
+
+    def __rxor__(self, other):
+        return self ^ other
 
 
 Unk = UnkClass()
