@@ -52,6 +52,8 @@ class BitVec:
         elif isinstance(index, slice):
             start = index.start
             stop = index.stop
+            if start is None:
+                start = 0
             if stop is None:
                 stop = self.width
             if index.step is not None:
