@@ -121,6 +121,13 @@ class BitVec:
         mask = (low ^ high) | self.mask | other.mask
         return BitVec(max(self.width, other.width), low, mask)
 
+    def __mul__(self, other):
+        width = max(self.width, other.width)
+        if self.mask or other.mask:
+            # TODO Is there an efficient better approximation?
+            return BitVec(width, 0, -1)
+        return BitVec(width, self.value * other.value)
+
     def __eq__(self, other):
         if isinstance(other, int):
             return self == bv(other)
