@@ -27,7 +27,7 @@ class BitVec:
             elif bit is True:
                 return '1'
             else:
-                return 'u'
+                return 'x'
         return ''.join(bit_reprs(bit) for bit in self)[::-1]
 
     def __repr__(self):
@@ -46,7 +46,7 @@ class BitVec:
             if index < 0 or index >= len(self):
                 raise IndexError('BitVec index out of range')
             if bitindex(self.mask, index):
-                return Unk
+                return X
             else:
                 return bool(bitindex(self.value, index))
         elif isinstance(index, slice):
@@ -137,12 +137,12 @@ class BitVec:
         if diff.value != 0:
             return False
         elif diff.mask != 0:
-            return Unk
+            return X
         else:
             return True
 
     def __ne__(self, other):
-        return unot(self == other)
+        return xnot(self == other)
 
     @staticmethod
     def concat(*values):
@@ -155,23 +155,23 @@ class BitVec:
             bitrepeat(count, self.width, self.mask))
 
 
-class UnkClass:
+class XClass:
     def __hash__(self):
-        raise TypeError('Unk is unhashable')
+        raise TypeError('X is unhashable')
 
     def __eq__(self, other):
-        return Unk
+        return X
 
     def __repr__(self):
-        return 'Unk'
+        return 'X'
 
     def __bool__(self):
         # TODO Specific error class
-        raise RuntimeError('cannot convert Unk value to bool')
+        raise RuntimeError('cannot convert X value to bool')
 
     def __and__(self, other):
-        if other is True or isinstance(other, UnkClass):
-            return Unk
+        if other is True or isinstance(other, XClass):
+            return X
         elif other is False:
             return False
         else:
@@ -181,8 +181,8 @@ class UnkClass:
         return self & other
 
     def __or__(self, other):
-        if other is False or isinstance(other, UnkClass):
-            return Unk
+        if other is False or isinstance(other, XClass):
+            return X
         elif other is True:
             return True
         else:
@@ -192,8 +192,8 @@ class UnkClass:
         return self & other
 
     def __xor__(self, other):
-        if isinstance(other, (bool, UnkClass)):
-            return Unk
+        if isinstance(other, (bool, XClass)):
+            return X
         else:
             return NotImplemented
 
@@ -201,7 +201,7 @@ class UnkClass:
         return self ^ other
 
 
-Unk = UnkClass()
+X = XClass()
 
 
 def bv(value):
@@ -209,7 +209,7 @@ def bv(value):
         return BitVec(1, 1)
     elif value is False:
         return BitVec(1, 0)
-    elif value is Unk:
+    elif value is X:
         return BitVec(1, 0, 1)
     elif isinstance(value, int):
         return BitVec(value.bit_length(), value)
@@ -217,21 +217,21 @@ def bv(value):
     # TODO Hex
     if not isinstance(value, str):
         raise TypeError('bv value must be a str')
-    if any(c not in '01uU' for c in value):
+    if any(c not in '01xX' for c in value):
         raise ValueError('invalid bit value')
     value = value[::-1]
     width = len(value)
     bits = sum((value[i] == '1') << i for i in range(width))
-    mask = sum((value[i] in 'uU') << i for i in range(width))
+    mask = sum((value[i] in 'xX') << i for i in range(width))
 
     return BitVec(width, bits, mask)
 
 
-def ubool(value):
+def xbool(value):
     if value is None:
         return False
-    elif isinstance(value, UnkClass):
-        return Unk
+    elif isinstance(value, XClass):
+        return X
     elif isinstance(value, (int, bool)):
         return bool(value)
     elif isinstance(value, BitVec):
@@ -239,9 +239,9 @@ def ubool(value):
     else:
         # TODO Figure out how to extend this
         # TODO Better error message
-        raise RuntimeError('value cannot be converted to ubool')
+        raise RuntimeError('value cannot be converted to xbool')
 
 
-def unot(value):
+def xnot(value):
     false = False
-    return ubool(value) == false
+    return xbool(value) == false

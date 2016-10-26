@@ -1,6 +1,6 @@
 from itertools import chain
 from .signal import Const, Value
-from .bitvec import BitVec, UnkClass, bv
+from .bitvec import BitVec, XClass, bv
 
 
 class ExprEval:
@@ -34,7 +34,7 @@ class ExprEval:
         if x is None:
             return
         res = x[index]
-        if isinstance(res, (bool, UnkClass)):
+        if isinstance(res, (bool, XClass)):
             res = bv(res)
         return res
 

@@ -2,7 +2,7 @@ from .type import *
 
 from .. import expr
 from ..signal import Value, Const
-from ..bitvec import bv, ubool
+from ..bitvec import bv, xbool
 
 
 class BoolType(SignalType):
@@ -15,7 +15,7 @@ class BoolType(SignalType):
 
     def _const_signal(self, value, *, implicit):
         # pylint: disable=unused-variable
-        return Const(Bool, bv(ubool(value)))
+        return Const(Bool, bv(xbool(value)))
 
 
 Bool = BoolType()
