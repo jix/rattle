@@ -10,6 +10,7 @@ _ops = '''
     Concat: parts
     Not: x
     And Or Xor: a b
+    Add Sub Mul: a b
     SignExt ZeroExt: bits x
     Repeat: count x
     Bundle: fields

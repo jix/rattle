@@ -86,6 +86,24 @@ class ExprEval:
             return
         return a ^ b
 
+    def _eval_add(self, a, b):
+        a, b = self.raw_value(a), self.raw_value(b)
+        if a is None or b is None:
+            return
+        return a + b
+
+    def _eval_sub(self, a, b):
+        a, b = self.raw_value(a), self.raw_value(b)
+        if a is None or b is None:
+            return
+        return a - b
+
+    def _eval_mul(self, a, b):
+        a, b = self.raw_value(a), self.raw_value(b)
+        if a is None or b is None:
+            return
+        return a * b
+
     def _eval_sign_ext(self, bits, x):
         x = self.raw_value(x)
         if x is None:

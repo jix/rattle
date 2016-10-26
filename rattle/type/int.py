@@ -21,6 +21,15 @@ class Int(BitsLike, metaclass=SignalMeta):
         else:
             return super()._generic_const_signal(value, implicit=implicit)
 
+    @staticmethod
+    def from_value_range(min_value, max_value):
+        width = max_value.bit_length()
+        if min_value < 0:
+            width = max(width, (~min_value).bit_length()) + 1
+            return SInt(width)
+        else:
+            return UInt(width)
+
 
 class IntMixin(BitsLikeMixin):
     def _convert(self, signal_type, *, implicit):
@@ -76,6 +85,50 @@ class IntMixin(BitsLikeMixin):
         b._access_read()
         return Value._auto(result_type(result_width), op(a, b))
 
+    def __add__(self, other):
+        if not isinstance(other.signal_type, Int):
+            return NotImplemented
+        a, b = self, other
+        result_type = Int.from_value_range(
+            a.signal_type.min_value + b.signal_type.min_value,
+            a.signal_type.max_value + b.signal_type.max_value)
+        result_width = result_type.width
+        a, b = a.extend(result_width), b.extend(result_width)
+        a._access_read()
+        b._access_read()
+        return Value._auto(result_type, expr.Add(a, b))
+
+    def __sub__(self, other):
+        if not isinstance(other.signal_type, Int):
+            return NotImplemented
+        a, b = self, other
+        result_type = Int.from_value_range(
+            a.signal_type.min_value - b.signal_type.max_value,
+            a.signal_type.max_value - b.signal_type.min_value)
+        result_width = result_type.width
+        a, b = a.extend(result_width), b.extend(result_width)
+        a._access_read()
+        b._access_read()
+        return Value._auto(result_type, expr.Sub(a, b))
+
+    def __mul__(self, other):
+        if not isinstance(other.signal_type, Int):
+            return NotImplemented
+        a, b = self, other
+        result_type = Int.from_value_range(
+            min(
+                a.signal_type.min_value * b.signal_type.max_value,
+                a.signal_type.max_value * b.signal_type.min_value),
+            max(
+                a.signal_type.min_value * b.signal_type.min_value,
+                a.signal_type.max_value * b.signal_type.max_value))
+        result_width = result_type.width
+        if result_width == 0:
+            return UInt(0)[0]
+        a, b = a.resize(result_width), b.resize(result_width)
+        a._access_read()
+        b._access_read()
+        return Value._auto(result_type, expr.Mul(a, b))
 
 Int.signal_mixin = IntMixin
 
@@ -84,6 +137,14 @@ class UInt(Int):
     @property
     def signed(self):
         return False
+
+    @property
+    def min_value(self):
+        return 0
+
+    @property
+    def max_value(self):
+        return (1 << self.width) - 1
 
     @classmethod
     def _generic_const_signal(cls, value, *, implicit):
@@ -148,6 +209,14 @@ class SInt(Int):
     @property
     def signed(self):
         return True
+
+    @property
+    def min_value(self):
+        return -(1 << (self.width - 1))
+
+    @property
+    def max_value(self):
+        return (1 << (self.width - 1)) - 1
 
     @classmethod
     def _generic_const_signal(cls, value, *, implicit):
