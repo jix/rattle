@@ -100,11 +100,29 @@ def test_add_const(a, b):
     assert (a + b).value == a.value + b.value
 
 
+@given(const_ints(), st.integers())  # pylint: disable=no-value-for-parameter
+def test_add_const_coerce_py_int(a, b):
+    assert (a + b).value == a.value + b
+    assert (b + a).value == b + a.value
+
+
 @given(const_ints(), const_ints())  # pylint: disable=no-value-for-parameter
 def test_sub_const(a, b):
     assert (a - b).value == a.value - b.value
 
 
+@given(const_ints(), st.integers())  # pylint: disable=no-value-for-parameter
+def test_sub_const_coerce_py_int(a, b):
+    assert (a - b).value == a.value - b
+    assert (b - a).value == b - a.value
+
+
 @given(const_ints(), const_ints())  # pylint: disable=no-value-for-parameter
 def test_mul_const(a, b):
     assert (a * b).value == a.value * b.value
+
+
+@given(const_ints(), st.integers())  # pylint: disable=no-value-for-parameter
+def test_mul_const_coerce_py_int(a, b):
+    assert (a * b).value == a.value * b
+    assert (b * a).value == b * a.value

@@ -40,13 +40,17 @@ class IntMixin(BitsLikeMixin):
     def _generic_convert(self, signal_type_class, *, implicit):
         if signal_type_class == Bits:
             return self.as_bits()
+        elif signal_type_class == Int:
+            return self
         return super()._generic_convert(signal_type_class, implicit=implicit)
 
     def as_bits(self):
         return self._auto_lvalue(Bits(self.width), expr.Nop(self))
 
     def __and__(self, other):
-        if not isinstance(other.signal_type, Int):
+        try:
+            other = Int.generic_convert(other, implicit=True)
+        except ConversionNotImplemented:
             return NotImplemented
         a, b = self, other
         if a.signal_type.signed & b.signal_type.signed:
@@ -67,7 +71,9 @@ class IntMixin(BitsLikeMixin):
         return Value._auto(result_type(result_width), expr.And(a, b))
 
     def _binary_bitop(self, other, op):
-        if not isinstance(other.signal_type, Int):
+        try:
+            other = Int.generic_convert(other, implicit=True)
+        except ConversionNotImplemented:
             return NotImplemented
         a, b = self, other
         if a.signal_type.signed & b.signal_type.signed:
@@ -86,7 +92,9 @@ class IntMixin(BitsLikeMixin):
         return Value._auto(result_type(result_width), op(a, b))
 
     def __add__(self, other):
-        if not isinstance(other.signal_type, Int):
+        try:
+            other = Int.generic_convert(other, implicit=True)
+        except ConversionNotImplemented:
             return NotImplemented
         a, b = self, other
         result_type = Int.from_value_range(
@@ -98,8 +106,13 @@ class IntMixin(BitsLikeMixin):
         b._access_read()
         return Value._auto(result_type, expr.Add(a, b))
 
+    def __radd__(self, other):
+        return self + other
+
     def __sub__(self, other):
-        if not isinstance(other.signal_type, Int):
+        try:
+            other = Int.generic_convert(other, implicit=True)
+        except ConversionNotImplemented:
             return NotImplemented
         a, b = self, other
         result_type = Int.from_value_range(
@@ -111,8 +124,17 @@ class IntMixin(BitsLikeMixin):
         b._access_read()
         return Value._auto(result_type, expr.Sub(a, b))
 
+    def __rsub__(self, other):
+        try:
+            other = Int.generic_convert(other, implicit=True)
+        except ConversionNotImplemented:
+            return NotImplemented
+        return other - self
+
     def __mul__(self, other):
-        if not isinstance(other.signal_type, Int):
+        try:
+            other = Int.generic_convert(other, implicit=True)
+        except ConversionNotImplemented:
             return NotImplemented
         a, b = self, other
         result_type = Int.from_value_range(
@@ -129,6 +151,9 @@ class IntMixin(BitsLikeMixin):
         a._access_read()
         b._access_read()
         return Value._auto(result_type, expr.Mul(a, b))
+
+    def __rmul__(self, other):
+        return self * other
 
 Int.signal_mixin = IntMixin
 
