@@ -40,7 +40,7 @@ class IntMixin(BitsLikeMixin):
     def _generic_convert(self, signal_type_class, *, implicit):
         if signal_type_class == Bits:
             return self.as_bits()
-        return super()._convert(signal_type_class, implicit=implicit)
+        return super()._generic_convert(signal_type_class, implicit=implicit)
 
     def as_bits(self):
         return self._auto_lvalue(Bits(self.width), expr.Nop(self))
@@ -175,7 +175,7 @@ class UIntMixin(IntMixin):
     def _generic_convert(self, signal_type_class, *, implicit):
         if signal_type_class == SInt:
             return self.as_sint()
-        return super()._convert(signal_type_class, implicit=implicit)
+        return super()._generic_convert(signal_type_class, implicit=implicit)
 
     def as_sint(self):
         return self.extend(self.width + 1).as_bits().as_sint()
