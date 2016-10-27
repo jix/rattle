@@ -155,6 +155,9 @@ class IntMixin(BitsLikeMixin):
     def __rmul__(self, other):
         return self * other
 
+    def __neg__(self):
+        return 0 - self
+
 Int.signal_mixin = IntMixin
 
 
