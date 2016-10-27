@@ -18,5 +18,9 @@ class ConversionNotImplemented(NotImplementedError):
     pass
 
 
+class NoCommonSignalType(ConversionNotImplemented):
+    pass
+
+
 class ImplicitNotFound(RuntimeError):
     pass

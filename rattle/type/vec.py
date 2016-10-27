@@ -124,8 +124,6 @@ class VecHelper:
 
 def vec(*args):
     if args and all(isinstance(signal, Signal) for signal in args):
-        first_type = args[0].signal_type
-        if all(signal.signal_type == first_type for signal in args[1:]):
-            return Vec(len(args), first_type)[args]
-    else:
-        return VecHelper(args)
+        common_type = SignalType.common(signal.signal_type for signal in args)
+        return Vec(len(args), common_type)[args]
+    return VecHelper(args)

@@ -30,6 +30,14 @@ class Int(BitsLike, metaclass=SignalMeta):
         else:
             return UInt(width)
 
+    def __or__(self, other):
+        if isinstance(other, Int):
+            return Int.from_value_range(
+                min(self.min_value, other.min_value),
+                max(self.max_value, other.max_value))
+        else:
+            return NotImplemented
+
 
 class IntMixin(BitsLikeMixin):
     def _convert(self, signal_type, *, implicit):

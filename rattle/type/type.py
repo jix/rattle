@@ -1,7 +1,9 @@
+from functools import reduce
+from operator import or_
 import abc
 
 from ..signal import Signal
-from ..error import ConversionNotImplemented
+from ..error import ConversionNotImplemented, NoCommonSignalType
 
 
 class SignalMeta(abc.ABCMeta):
@@ -119,6 +121,20 @@ class SignalType(metaclass=SignalMeta):
 
     def short_repr(self):
         return repr(self)
+
+    def __or__(self, other):
+        if self == other:
+            return self
+        else:
+            return NotImplemented
+
+    @staticmethod
+    def common(types):
+        try:
+            return reduce(or_, types)
+        except TypeError:
+            raise NoCommonSignalType(
+                "no common signal type for given types %r" % tuple(types))
 
 
 class SignalMixin(Signal):

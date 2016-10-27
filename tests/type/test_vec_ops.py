@@ -59,6 +59,15 @@ def test_vec_construction_helper_fn_non_const(module):
     assert self.vec.signal_type == MyVec
 
 
+def test_vec_construction_helper_fn_non_const_coercion(module):
+    self = module
+    MyVec = Vec(2, SInt(11))
+    self.int_a = Wire(UInt(10))
+    self.int_b = Wire(SInt(4))
+    self.vec = vec(self.int_a, self.int_b)
+    assert self.vec.signal_type == MyVec
+
+
 def test_vec_construction_helper_fn_const(module):
     self = module
     self.vec = Wire(Vec(2, Bits(8)))
