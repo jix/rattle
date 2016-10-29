@@ -1,6 +1,7 @@
 from .type import *
 from .. import expr
 from ..signal import Value, Const
+from ..slice import check_slice
 
 
 class Vec(SignalType):
@@ -60,51 +61,21 @@ class VecMixin(SignalMixin):
         return self.signal_type.element_type
 
     def __getitem__(self, index):
-        # TODO Move indexing logic into helper function
-        if index == slice(None, None, None):
-            return super().__getitem__(index)
-        elif isinstance(index, int):
-            if index < 0:
-                index += len(self)
-            if index < 0 or index >= len(self):
-                raise IndexError('Vec index out of bounds')
+        slice_type, params = check_slice(len(self), index)
 
+        if slice_type == 'all':
+            return super().__getitem__(index)
+        elif slice_type == 'const_index':
+            index = params
             return self._auto_lvalue(
                 self.element_type, expr.ConstIndex(index, self))
-        elif isinstance(index, slice) and index.step is None:
-            start = index.start
-            stop = index.stop
-
-            if start is None:
-                start = 0
-
-            if stop is None:
-                stop = len(self)
-
-            if isinstance(start, int):
-                if start < 0:
-                    start += len(self)
-                if start < 0 or start >= len(self):
-                    raise IndexError('start index out of bounds')
-
-                if (isinstance(stop, list) and len(stop) == 1 and
-                        isinstance(stop[0], int)):
-                    stop = start + stop[0]
-
-                if isinstance(stop, int):
-                    if stop < 0:
-                        stop += len(self)
-                    if stop < 0 or stop > len(self):
-                        raise IndexError('stop index out of bounds')
-
-                    length = stop - start
-
-                    return self._auto_lvalue(
-                        Vec(length, self.signal_type.element_type),
-                        expr.ConstSlice(start, length, self))
-
-        # TODO Non-const indexing
-        raise TypeError('Vec index must be an integer')
+        elif slice_type == 'const_slice':
+            start, length = params
+            return self._auto_lvalue(
+                Vec(length, self.signal_type.element_type),
+                expr.ConstSlice(start, length, self))
+        else:
+            raise TypeError('unsupported index type')
 
     def __len__(self):
         return self.signal_type.length

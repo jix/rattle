@@ -3,6 +3,7 @@ from .. import expr
 from ..signal import Value, Const
 from ..error import ConversionNotImplemented
 from ..bitvec import BitVec, bv
+from ..slice import check_slice
 
 
 class BitsLike(SignalType, metaclass=SignalMeta):
@@ -159,49 +160,20 @@ class BitsLikeMixin(SignalMixin):
 
     def __getitem__(self, index):
         from .bool import Bool
-        # TODO Move indexing logic into helper function
-        if index == slice(None, None, None):
+
+        slice_type, params = check_slice(self.width, index)
+
+        if slice_type == 'all':
             return super().__getitem__(index)
-        elif isinstance(index, int):
-            if index < 0:
-                index += self.width
-            if index < 0 or index >= self.width:
-                raise IndexError('index out of bounds')
-
+        elif slice_type == 'const_index':
+            index = params
             return self._auto_lvalue(Bool, expr.ConstIndex(index, self))
-        elif isinstance(index, slice) and index.step is None:
-            start = index.start
-            stop = index.stop
-
-            if start is None:
-                start = 0
-
-            if stop is None:
-                stop = self.width
-
-            if isinstance(start, int):
-                if start < 0:
-                    start += self.width
-                if start < 0 or start >= self.width:
-                    raise IndexError('start index out of bounds')
-
-                if (isinstance(stop, list) and len(stop) == 1 and
-                        isinstance(stop[0], int)):
-                    stop = start + stop[0]
-
-                if isinstance(stop, int):
-                    if stop < 0:
-                        stop += self.width
-                    if stop < 0 or stop > self.width:
-                        raise IndexError('stop index out of bounds')
-
-                    length = stop - start
-
-                    return self._auto_lvalue(
-                        Bits(length), expr.ConstSlice(start, length, self))
-
-        # TODO Non-const indexing
-        raise TypeError('Unsupported index type for BitsLike')
+        elif slice_type == 'const_slice':
+            start, length = params
+            return self._auto_lvalue(
+                Bits(length), expr.ConstSlice(start, length, self))
+        else:
+            raise TypeError('unsupported index type')
 
 BitsLike.signal_mixin = BitsLikeMixin
 
