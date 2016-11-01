@@ -1,4 +1,8 @@
+from .signal import Signal
+
+
 def check_slice(width, index):
+    from .type import Bits
     if index == slice(None, None, None):
         return 'all', None
     elif isinstance(index, int):
@@ -7,6 +11,10 @@ def check_slice(width, index):
         if index < 0 or index >= width:
             raise IndexError('index out of bounds')
         return 'const_index', index
+    elif isinstance(index, Signal):
+        index_width = (width - 1).bit_length()
+        index = Bits(index_width).convert(index, implicit=True)
+        return 'dynamic_index', index
     elif isinstance(index, slice) and index.step is None:
         start = index.start
         stop = index.stop

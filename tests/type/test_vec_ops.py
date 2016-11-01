@@ -95,3 +95,32 @@ def test_vec_slice_access_const():
     assert my_vec[4:].value == (5, 6, 7, 8)
     assert my_vec[:4].value == (1, 2, 3, 4)
     assert my_vec[2:[4]].value == (3, 4, 5, 6)
+
+
+def test_vec_dynamic_indexing(module):
+    self = module
+    self.index = Wire(Bits(4))
+    self.vec = Wire(Vec(16, Bits(8)))
+    self.result = self.vec[self.index]
+
+    assert self.result.signal_type == Bits(8)
+
+
+def test_vec_dynamic_indexing_const():
+    v = Vec(7, Bits(8))[(
+        '10000000',
+        '10000001',
+        '10000011',
+        '10000010',
+        '10000110',
+        '10001010',
+        '10010010',
+    )]
+
+    assert str(v[Bits(3)['000']].value) == '10000000'
+    assert str(v[Bits(3)['00x']].value) == '1000000x'
+    assert str(v[Bits(3)['01x']].value) == '1000001x'
+    assert str(v[Bits(3)['111']].value) == 'xxxxxxxx'
+    assert str(v[Bits(3)['1xx']].value) == 'xxxxxxxx'
+    assert str(v[Bits(3)['0xx']].value) == '100000xx'
+    assert str(v[Bits(3)['xx0']].value) == '100x0xxx'

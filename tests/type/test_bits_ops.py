@@ -53,3 +53,23 @@ def test_bits_slice_access_const():
     assert my_bits[4:].value == 0b1001
     assert my_bits[:4].value == 0b0110
     assert my_bits[2:[4]].value == 0b0101
+
+
+def test_bits_dynamic_indexing(module):
+    self = module
+    self.index = Wire(Bits(4))
+    self.bits = Wire(Bits(16))
+    self.result = self.bits[self.index]
+
+    assert self.result.signal_type == Bool
+
+
+def test_bits_dynamic_indexing_const():
+    v = Bits(7)['0001x10']
+
+    assert v[Bits(3)['000']].value is False
+    assert v[Bits(3)['00x']].value is X
+    assert v[Bits(3)['0x1']].value is True
+    assert v[Bits(3)['01x']].value is X
+    assert v[Bits(3)['111']].value is X
+    assert v[Bits(3)['1xx']].value is X

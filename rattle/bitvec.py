@@ -154,6 +154,19 @@ class BitVec:
             bitrepeat(count, self.width, self.value),
             bitrepeat(count, self.width, self.mask))
 
+    def values(self):
+        i = bitmask(self.width)
+        while i >= 0:
+            i &= self.mask
+            yield i | self.value
+            i -= 1
+
+    def combine(self, other):
+        return BitVec(
+            max(self.width, other.width),
+            self.value,
+            (self.value ^ other.value) | self.mask | other.mask)
+
 
 class XClass:
     def __hash__(self):

@@ -168,6 +168,10 @@ class BitsLikeMixin(SignalMixin):
         elif slice_type == 'const_index':
             index = params
             return self._auto_lvalue(Bool, expr.ConstIndex(index, self))
+        elif slice_type == 'dynamic_index':
+            index = params
+            index._access_read()
+            return self._auto_lvalue(Bool, expr.DynamicIndex(index, self))
         elif slice_type == 'const_slice':
             start, length = params
             return self._auto_lvalue(

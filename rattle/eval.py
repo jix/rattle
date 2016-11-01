@@ -38,6 +38,20 @@ class ExprEval:
             res = bv(res)
         return res
 
+    def _eval_dynamic_index(self, index, x):
+        index, x = self.raw_value(index), self.raw_value(x)
+        if index is None or x is None:
+            return
+
+        res = None
+        for i in index.values():
+            if i >= len(x):
+                return self._xval(x[0])
+            else:
+                res = self._combine(res, x[i])
+        assert res is not None
+        return res
+
     def _eval_const_slice(self, start, length, x):
         x = self.raw_value(x)
         if x is None:
@@ -134,5 +148,29 @@ class ExprEval:
         if any(element is None for element in elements):
             return
         return elements
+
+    def _xval(self, value):
+        if isinstance(value, (bool, XClass)):
+            return BitVec(1, 0, -1)
+        elif isinstance(value, BitVec):
+            return BitVec(value.width, 0, -1)
+        elif isinstance(value, (tuple, list)):
+            return tuple(self._xval(v) for v in value)
+        elif isinstance(value, dict):
+            return {k: self._xval(v) for k, v in value.items()}
+
+    def _combine(self, a, b):
+        if isinstance(b, (bool, XClass)):
+            b = bv(b)
+        if a is None:
+            return b
+
+        if isinstance(a, BitVec):
+            return a.combine(b)
+        elif isinstance(a, (tuple, list)):
+            return tuple(self._combine(x, y) for x, y in zip(a, b))
+        elif isinstance(a, dict):
+            return {k: self._combine(x, b[k]) for k, x in a.items()}
+
 
 const_expr_eval = ExprEval()

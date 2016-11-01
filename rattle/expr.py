@@ -5,6 +5,7 @@ _ops = '''
     Nop: x
     Field: name $x
     ConstIndex: index $x
+    DynamicIndex: index x
     ConstSlice: start length $x
     Flip: x
     Concat: parts

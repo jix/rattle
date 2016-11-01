@@ -69,6 +69,11 @@ class VecMixin(SignalMixin):
             index = params
             return self._auto_lvalue(
                 self.element_type, expr.ConstIndex(index, self))
+        elif slice_type == 'dynamic_index':
+            index = params
+            index._access_read()
+            return self._auto_lvalue(
+                self.element_type, expr.DynamicIndex(index, self))
         elif slice_type == 'const_slice':
             start, length = params
             return self._auto_lvalue(
