@@ -2,6 +2,7 @@ import abc
 
 from .type import *
 from .bits import *
+from .bool import Bool
 from ..bitvec import X
 from ..bitmath import signext
 
@@ -78,7 +79,7 @@ class IntMixin(BitsLikeMixin):
         b._access_read()
         return Value._auto(result_type(result_width), expr.And(a, b))
 
-    def _binary_bitop(self, other, op):
+    def _binary_bitop(self, other, op, result_override=None):
         try:
             other = Int.generic_convert(other, implicit=True)
         except ConversionNotImplemented:
@@ -97,7 +98,12 @@ class IntMixin(BitsLikeMixin):
         a, b = a.extend(result_width), b.extend(result_width)
         a._access_read()
         b._access_read()
-        return Value._auto(result_type(result_width), op(a, b))
+        if result_override is None:
+            result_type = result_type(result_width)
+        else:
+            result_type = result_override
+
+        return Value._auto(result_type, op(a, b))
 
     def __add__(self, other):
         try:
@@ -165,6 +171,10 @@ class IntMixin(BitsLikeMixin):
 
     def __neg__(self):
         return 0 - self
+
+    def __eq__(self, other):
+        return self._binary_bitop(other, expr.Eq, result_override=Bool)
+
 
 Int.signal_mixin = IntMixin
 
