@@ -88,12 +88,13 @@ class BitsLikeMixin(SignalMixin):
         return Value._auto(self.signal_type, expr.Not(self))
 
     def _binary_bitop(self, other, op):
-        if other.signal_type == self.signal_type:
-            self._access_read()
-            other._access_read()
-            return Value._auto(self.signal_type, op(self, other))
-        else:
+        try:
+            other = self.signal_type.convert(other, implicit=True)
+        except ConversionNotImplemented:
             return NotImplemented
+        self._access_read()
+        other._access_read()
+        return Value._auto(self.signal_type, op(self, other))
 
     def __and__(self, other):
         return self._binary_bitop(other, expr.And)
