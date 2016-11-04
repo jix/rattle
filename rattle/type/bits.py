@@ -114,6 +114,20 @@ class BitsLikeMixin(SignalMixin):
     def __rxor__(self, other):
         return self.__xor__(other)
 
+    def __eq__(self, other):
+        from .bool import Bool
+        try:
+            other = self.signal_type.convert(other, implicit=True)
+        except ConversionNotImplemented:
+            return NotImplemented
+
+        self._access_read()
+        other._access_read()
+        return Value._auto(Bool, expr.Eq(self, other))
+
+    def __ne__(self, other):
+        return ~(self == other)
+
     def extend(self, width):
         if not isinstance(width, int):
             raise TypeError('signal width must be an integer')

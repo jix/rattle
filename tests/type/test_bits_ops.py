@@ -1,6 +1,17 @@
+from hypothesis import given
+import hypothesis.strategies as st
 from rattle.module import *
 from rattle.signal import *
 from rattle.type import *
+
+
+@st.composite
+def const_bits_pair(draw):
+    width = draw(st.integers(0, 65))
+    bits_type = Bits(width)
+    value_a = draw(st.integers(0, (1 << width) - 1))
+    value_b = draw(st.integers(0, (1 << width) - 1))
+    return bits_type[value_a], bits_type[value_b]
 
 
 def test_const_negate():
@@ -73,3 +84,18 @@ def test_bits_dynamic_indexing_const():
     assert v[Bits(3)['01x']].value is X
     assert v[Bits(3)['111']].value is X
     assert v[Bits(3)['1xx']].value is X
+
+
+def test_bits_eq(module):
+    self = module
+    self.a = Wire(Bits(8))
+    self.b = Wire(Bits(8))
+
+    assert (self.a == self.b).signal_type == Bool
+
+
+@given(const_bits_pair())  # pylint: disable=no-value-for-parameter
+def test_bits_eq_const(bits_pair):
+    a, b = bits_pair
+    assert (a == b).value == (a.value == b.value)
+    assert (a == a).value is True
