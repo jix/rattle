@@ -152,3 +152,39 @@ def test_eq(module):
 @given(const_ints(), const_ints())  # pylint: disable=no-value-for-parameter
 def test_eq_const(a, b):
     assert (a == b).value == (a.value == b.value)
+
+
+def test_compare(module):
+    self = module
+    self.uint4 = Wire(UInt(4))
+    self.sint4 = Wire(SInt(4))
+    self.uint8 = Wire(UInt(8))
+    self.sint8 = Wire(SInt(8))
+
+    assert (self.uint4 < self.uint4).signal_type == Bool
+    assert (self.uint4 <= self.sint4).signal_type == Bool
+    assert (self.uint4 > self.uint8).signal_type == Bool
+    assert (self.uint4 >= self.sint8).signal_type == Bool
+    assert (self.sint4 < self.sint4).signal_type == Bool
+    assert (self.sint4 <= self.uint8).signal_type == Bool
+    assert (self.sint4 > self.sint8).signal_type == Bool
+
+
+@given(const_ints(), const_ints())  # pylint: disable=no-value-for-parameter
+def test_lt_const(a, b):
+    assert (a < b).value == (a.value < b.value)
+
+
+@given(const_ints(), const_ints())  # pylint: disable=no-value-for-parameter
+def test_le_const(a, b):
+    assert (a <= b).value == (a.value <= b.value)
+
+
+@given(const_ints(), const_ints())  # pylint: disable=no-value-for-parameter
+def test_gt_const(a, b):
+    assert (a > b).value == (a.value > b.value)
+
+
+@given(const_ints(), const_ints())  # pylint: disable=no-value-for-parameter
+def test_ge_const(a, b):
+    assert (a >= b).value == (a.value >= b.value)

@@ -144,6 +144,33 @@ class BitVec:
     def __ne__(self, other):
         return xnot(self == other)
 
+    def __lt__(self, other):
+        if not isinstance(other, BitVec):
+            return NotImplemented
+        width = max(self.width, other.width)
+        a = BitVec(width + 1, self.value, self.mask)
+        b = BitVec(width + 1, other.value, other.mask)
+
+        return (a - b)[-1]
+
+    def __le__(self, other):
+        return xnot(self > other)
+
+    def __gt__(self, other):
+        if not isinstance(other, BitVec):
+            return NotImplemented
+        return other < self
+
+    def __ge__(self, other):
+        return xnot(self < other)
+
+    def sign_wrap(self):
+        if self.width == 0:
+            return BitVec(0, 0)
+        else:
+            return BitVec(
+                self.width, self.value ^ (1 << (self.width - 1)), self.mask)
+
     @staticmethod
     def concat(*values):
         return bv(''.join(str(value) for value in reversed(values)))

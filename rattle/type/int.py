@@ -79,7 +79,7 @@ class IntMixin(BitsLikeMixin):
         b._access_read()
         return Value._auto(result_type(result_width), expr.And(a, b))
 
-    def _binary_bitop(self, other, op, result_override=None):
+    def _binary_bitop(self, other, op, result_override=None, signed_op=None):
         try:
             other = Int.generic_convert(other, implicit=True)
         except ConversionNotImplemented:
@@ -98,6 +98,10 @@ class IntMixin(BitsLikeMixin):
         a, b = a.extend(result_width), b.extend(result_width)
         a._access_read()
         b._access_read()
+
+        if signed_op is not None and result_type(result_width).signed:
+            op = signed_op
+
         if result_override is None:
             result_type = result_type(result_width)
         else:
@@ -175,6 +179,27 @@ class IntMixin(BitsLikeMixin):
     def __eq__(self, other):
         return self._binary_bitop(other, expr.Eq, result_override=Bool)
 
+    def __lt__(self, other):
+        return self._binary_bitop(
+            other, expr.Lt, result_override=Bool, signed_op=expr.Slt)
+
+    def __le__(self, other):
+        return self._binary_bitop(
+            other, expr.Le, result_override=Bool, signed_op=expr.Sle)
+
+    def __gt__(self, other):
+        try:
+            other = Int.generic_convert(other, implicit=True)
+        except ConversionNotImplemented:
+            return NotImplemented
+        return other < self
+
+    def __ge__(self, other):
+        try:
+            other = Int.generic_convert(other, implicit=True)
+        except ConversionNotImplemented:
+            return NotImplemented
+        return other <= self
 
 Int.signal_mixin = IntMixin
 

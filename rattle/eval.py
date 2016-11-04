@@ -124,6 +124,30 @@ class ExprEval:
             return
         return bv(a == b)
 
+    def _eval_lt(self, a, b):
+        a, b = self.raw_value(a), self.raw_value(b)
+        if a is None or b is None:
+            return
+        return bv(a < b)
+
+    def _eval_le(self, a, b):
+        a, b = self.raw_value(a), self.raw_value(b)
+        if a is None or b is None:
+            return
+        return bv(a <= b)
+
+    def _eval_slt(self, a, b):
+        a, b = self.raw_value(a), self.raw_value(b)
+        if a is None or b is None:
+            return
+        return bv(a.sign_wrap() < b.sign_wrap())
+
+    def _eval_sle(self, a, b):
+        a, b = self.raw_value(a), self.raw_value(b)
+        if a is None or b is None:
+            return
+        return bv(a.sign_wrap() <= b.sign_wrap())
+
     def _eval_sign_ext(self, bits, x):
         x = self.raw_value(x)
         if x is None:

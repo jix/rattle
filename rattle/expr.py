@@ -12,7 +12,7 @@ _ops = '''
     Not: x
     And Or Xor: a b
     Add Sub Mul: a b
-    Eq: a b
+    Eq Lt Le Slt Sle: a b
     SignExt ZeroExt: bits x
     Repeat: count x
     Bundle: fields
