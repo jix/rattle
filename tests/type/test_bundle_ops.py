@@ -10,7 +10,7 @@ def test_bundle_field_access(module):
     self.bool = Wire(Bool)
     self.bits = Wire(Bits(8))
     assert self.bundle['a'].signal_type == Bool
-    self.bundle['a'] = self.bool
+    self.bundle['a'][:] = self.bool
     assert self.bundle.b.signal_type == Bits(8)
     self.bundle.b[:] = self.bits
 

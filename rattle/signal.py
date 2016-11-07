@@ -145,6 +145,14 @@ class Signal(metaclass=abc.ABCMeta):
     def __setitem__(self, key, value):
         if key == slice(None, None, None):
             self.assign(value)
+        else:
+            raise TypeError('Signal object does not support item assignment')
+
+    def __getitem__(self, key):
+        if key == slice(None, None, None):
+            return self
+        else:
+            raise TypeError('Signal object is not subscriptable')
 
     def _convert(self, signal_type, *, implicit):
         # pylint: disable=no-self-use, unused-variable
