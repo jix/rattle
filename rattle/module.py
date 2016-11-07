@@ -3,11 +3,11 @@ import abc
 from . import context
 from .error import NoModuleUnderConstruction
 from .conditional import ConditionStack
+from .signal import Signal
 
 
 class ModuleData:
     def __init__(self, ctx, module):
-        self.named_signals = []
         self.storage_signals = []
         self.assignments = []
         self.lowered_assignments = []

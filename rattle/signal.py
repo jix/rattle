@@ -167,13 +167,6 @@ class Signal(metaclass=abc.ABCMeta):
         Implicit._module_scope_bind(name, self)
         return self
 
-    def named(self, name=None):
-        # TODO Store suggested name for the naming pass
-        # TODO Check for Consts
-        if not self._named:
-            self._named = True
-            self.module._module_data.named_signals.append(self)
-
     def _deflip(self):
         return self
 

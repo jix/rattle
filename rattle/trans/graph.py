@@ -123,10 +123,6 @@ class ModuleToGraph:
                 self.signal(signal)
 
         if not lowered_only:
-            for signal in module_data.named_signals:
-                self.signal(signal)
-
-        if not lowered_only:
             for i, assignment in enumerate(module_data.assignments):
                 self.add_assignment(i, *assignment)
 
