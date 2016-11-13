@@ -48,7 +48,7 @@ class Signal(metaclass=abc.ABCMeta):
         return _check_signal_type(signal_type).signal_mixin, signal_type
 
     def __init__(self, signal_type, *, module, rmodule, lmodule):
-        self._named = False
+        self._named = None
         self.__module = module
         self.__rmodule = rmodule
         self.__lmodule = lmodule
@@ -211,6 +211,10 @@ class Signal(metaclass=abc.ABCMeta):
 
     def _hash_key(self):
         return hashutil.HashInstance(self)
+
+    def named(self, name):
+        self._named = str(name)
+        return self
 
 
 class StorageSignal(Signal, metaclass=abc.ABCMeta):

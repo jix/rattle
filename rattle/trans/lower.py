@@ -24,6 +24,7 @@ class LowerSignalGen:
         self.indices = indices
         if generated_signals is None:
             generated_signals = {}
+            root_signal._lowered_parts = generated_signals
         self.generated_signals = generated_signals
 
     def clone(self):
@@ -113,8 +114,15 @@ class Lower:
             self.lower_assignments()
 
     def lower_storage_signals(self):
-        for signal in list(self.module._module_data.storage_signals):
+        module_data = self.module._module_data
+        storage_signals = module_data.storage_signals
+        module_data.storage_signals = []
+        for signal in storage_signals:
             self.lower_signal(signal)
+            if signal._lowered is None:
+                module_data.storage_signals.append(signal)
+        module_data.lowered_storage_signals = module_data.storage_signals
+        module_data.storage_signals = storage_signals
 
     def lower_signal(self, signal, signal_gen=None):
         if not self.signal_type_needs_lowering(signal.signal_type):

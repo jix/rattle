@@ -4,6 +4,7 @@ from . import context
 from .error import NoModuleUnderConstruction
 from .conditional import ConditionStack
 from .signal import Signal
+from .hashutil import hash_key
 
 
 class ModuleData:
@@ -15,6 +16,7 @@ class ModuleData:
         self.implicit_bindings = {}
         self.submodules = []
         self.common_values = {}
+        self.automatic_names = {}
         try:
             self.parent = ctx.module
         except NoModuleUnderConstruction:
@@ -43,3 +45,8 @@ class Module(metaclass=abc.ABCMeta):
 
     def reopen(self):
         return context.current().constructing_module(self)
+
+    def __setattr__(self, name, value):
+        if isinstance(value, Signal):
+            self._module_data.automatic_names[hash_key(value)] = name
+        return super().__setattr__(name, value)
