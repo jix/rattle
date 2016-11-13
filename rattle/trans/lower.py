@@ -270,11 +270,20 @@ class Lower:
 
     reduce_signal_nop = reduce_signal_basic_op  # TODO Handle nop
     reduce_signal_const_slice = reduce_signal_basic_op  # TODO Needs reduction?
+    reduce_signal_dynamic_index = reduce_signal_basic_op  # TODO Reduction
     reduce_signal_concat = reduce_signal_basic_op
     reduce_signal_not = reduce_signal_basic_op
     reduce_signal_and = reduce_signal_basic_op
     reduce_signal_or = reduce_signal_basic_op
     reduce_signal_xor = reduce_signal_basic_op
+    reduce_signal_add = reduce_signal_basic_op
+    reduce_signal_sub = reduce_signal_basic_op
+    reduce_signal_mul = reduce_signal_basic_op
+    reduce_signal_eq = reduce_signal_basic_op
+    reduce_signal_lt = reduce_signal_basic_op
+    reduce_signal_le = reduce_signal_basic_op
+    reduce_signal_slt = reduce_signal_basic_op
+    reduce_signal_sle = reduce_signal_basic_op
     reduce_signal_sign_ext = reduce_signal_basic_op
     reduce_signal_zero_ext = reduce_signal_basic_op
 
@@ -412,6 +421,12 @@ class Lower:
                 'cannot determine storage signal for assignment target')
 
     def target_storage_signal_const_index(self, target, index, x):
+        return self.target_storage_signal(x)
+
+    def target_storage_signal_dynamic_index(self, target, index, x):
+        return self.target_storage_signal(x)
+
+    def target_storage_signal_const_slice(self, target, start, length, x):
         return self.target_storage_signal(x)
 
     def emit_assignment(self, target, conditions, value):
