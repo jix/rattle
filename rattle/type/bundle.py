@@ -1,7 +1,5 @@
 import collections
 
-from .. import expr
-from ..signal import Value
 from .type import *
 
 
@@ -46,19 +44,37 @@ class Bundle(SignalType):
                 raise KeyError(
                     "Bundle %r does not contain fields %s" %
                     (self, ', '.join(map(repr, extra))))
-            field_signals = {}
-            for key, field_type in self.__fields.items():
-                field_signals[key] = field_type.convert(
-                    value[key], implicit=implicit)
-            return Value._auto_concat_lvalue(
-                field_signals.values(), self, expr.Bundle(field_signals))
+            prims = {}
+            for field, field_type in self.__fields.items():
+                field_signal = field_type.convert(
+                    value[field], implicit=implicit)
+                prims.update(
+                    ((field,) + k, v)
+                    for k, v in field_signal._prims.items())
+            return self._from_prims(prims)
         return NotImplemented
 
+    @property
+    def _signal_class(self):
+        return BundleSignal
 
-class BundleMixin(SignalMixin):
+    @property
+    def _prim_shape(self):
+        shape = {}
+        for field, field_type in self.__fields.items():
+            shape.update(
+                ((field,) + k, v)
+                for k, v in field_type._prim_shape.items())
+        return shape
+
+
+class BundleSignal(Signal):
     def __getitem__(self, key):
         item_type = self.signal_type.fields[key]
-        return self._auto_lvalue(item_type, expr.Field(key, self))._deflip()
+        return item_type._from_prims({
+            k[1:]: v
+            for k, v in self._prims.items()
+            if k[0] == key})
 
     def __getattr__(self, name):
         try:
@@ -66,9 +82,13 @@ class BundleMixin(SignalMixin):
         except KeyError:
             raise AttributeError()  # TODO Message
 
-    # TODO Better repr
+    @property
+    def value(self):
+        return {
+            field: self[field].value
+            for field in self.signal_type.fields}
 
-Bundle.signal_mixin = BundleMixin
+    # TODO Better repr
 
 
 class BundleHelper:

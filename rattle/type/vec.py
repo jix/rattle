@@ -1,7 +1,7 @@
 from .type import *
-from .. import expr
-from ..signal import Value, Const
-from ..slice import check_slice
+from ..signal import Signal
+from ..primitive import *
+from ..slice import dispatch_getitem
 
 
 class Vec(SignalType):
@@ -33,59 +33,60 @@ class Vec(SignalType):
             value = value._values
 
         if isinstance(value, (list, tuple)):
-            element_signals = [
-                self.element_type.convert(el, implicit=implicit)
-                for el in value]
-            return Value._auto_concat_lvalue(
-                element_signals, self, expr.Vec(element_signals))
+            # TODO Check length
+            transposed = {k: [] for k in self._prim_shape}
+
+            for element in value:
+                element = self.element_type.convert(element, implicit=implicit)
+                for field, prim in element._prims.items():
+                    transposed[field].append(prim)
+
+            return self._from_prims({
+                k: PrimTable(v) for k, v in transposed.items()})
         return NotImplemented
 
-    def _eval_vec(self, elements):
-        if all(isinstance(elemnent, Const) for elemnent in elements):
-            return Const(self, tuple(element.value for element in elements))
+    @property
+    def _signal_class(self):
+        return VecSignal
 
-    @staticmethod
-    def _eval_const_index(result_type, index, x):
-        if isinstance(x, Const):
-            return Const(result_type, x.value[index])
-
-    @staticmethod
-    def _eval_const_slice(result_type, start, length, x):
-        if isinstance(x, Const):
-            return Const(result_type, x.value[start:start + length])
+    @property
+    def _prim_shape(self):
+        return {
+            k: v + (self.length,)
+            for k, v in self.element_type._prim_shape.items()}
 
 
-class VecMixin(SignalMixin):
+class VecSignal(Signal):
     @property
     def element_type(self):
         return self.signal_type.element_type
 
-    def __getitem__(self, index):
-        slice_type, params = check_slice(len(self), index)
-
-        if slice_type == 'all':
-            return super().__getitem__(index)
-        elif slice_type == 'const_index':
-            index = params
-            return self._auto_lvalue(
-                self.element_type, expr.ConstIndex(index, self))
-        elif slice_type == 'dynamic_index':
-            index = params
-            index._access_read()
-            return self._auto_lvalue(
-                self.element_type, expr.DynamicIndex(index, self))
-        elif slice_type == 'const_slice':
-            start, length = params
-            return self._auto_lvalue(
-                Vec(length, self.signal_type.element_type),
-                expr.ConstSlice(start, length, self))
-        else:
-            raise TypeError('unsupported index type')
-
     def __len__(self):
         return self.signal_type.length
 
-Vec.signal_mixin = VecMixin
+    __getitem__ = dispatch_getitem
+
+    def _getitem_all(self):
+        return self
+
+    def _getitem_const_index(self, index):
+        return self._getitem_prim(PrimConst(bv(index)))
+
+    def _getitem_dynamic_index(self, index):
+        return self._getitem_prim(index._prim())
+
+    def _getitem_prim(self, index_prim):
+        return self.element_type._from_prims({
+            k: PrimIndex(index_prim, v)
+            for k, v in self._prims.items()})
+
+    def _getitem_const_slice(self, start, length):
+        return Vec(length, self.element_type)[
+            [self[i] for i in range(start, start + length)]]
+
+    @property
+    def value(self):
+        return tuple(self[i].value for i in range(len(self)))
 
 
 class VecHelper:

@@ -1,4 +1,4 @@
-from .bitmath import bitindex, bitmask, bitrepeat
+from .bitmath import bitindex, bitmask, bitrepeat, signext
 
 
 class BitVec:
@@ -49,6 +49,8 @@ class BitVec:
                 return X
             else:
                 return bool(bitindex(self.value, index))
+        elif isinstance(index, BitVec):
+            return self._index_bitvec(index)
         elif isinstance(index, slice):
             start = index.start
             stop = index.stop
@@ -80,6 +82,24 @@ class BitVec:
                 (self.mask >> start) & width_mask)
         else:
             raise TypeError('BitVec indices must be integers or slices')
+
+    def _index_bitvec(self, index):
+        value = self.value
+        mask = self.mask | ~bitmask(self.width)
+
+        for i in range(index.width):
+            if index[i] is True:
+                shift = 1 << i
+                value >>= shift
+                mask >>= shift
+            elif index[i] is X:
+                shift = 1 << i
+                mask |= (mask >> shift) | ((value >> shift) ^ value)
+
+        if mask & 1:
+            return X
+        else:
+            return bool(value & 1)
 
     def __invert__(self):
         return BitVec(self.width, ~self.value, self.mask)
@@ -176,6 +196,7 @@ class BitVec:
         return bv(''.join(str(value) for value in reversed(values)))
 
     def repeat(self, count):
+        # TODO Type/value checking
         return BitVec(
             self.width * count,
             bitrepeat(count, self.width, self.value),
@@ -193,6 +214,16 @@ class BitVec:
             max(self.width, other.width),
             self.value,
             (self.value ^ other.value) | self.mask | other.mask)
+
+    def extend(self, width):
+        # TODO Type/value checking
+        return BitVec(width, self.value, self.mask)
+
+    def sign_extend(self, width):
+        return BitVec(
+            width,
+            signext(self.width, self.value),
+            signext(self.width, self.mask))
 
 
 class XClass:
@@ -242,6 +273,7 @@ class XClass:
 
 
 X = XClass()
+XClass.__new__ = lambda cls: X
 
 
 def bv(value):

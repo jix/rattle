@@ -1,7 +1,8 @@
 from contextlib import contextmanager
 from . import context
-from .signal import Const
 from .type.bool import Bool
+from .primitive import PrimConst
+from .bitvec import bv
 
 
 class ConditionStack:
@@ -16,6 +17,8 @@ class ConditionStack:
     def enter(self, condition, priority=None):
         if not isinstance(condition, ResetCondition):
             condition = Bool.convert(condition, implicit=True)
+            condition._access()
+            condition = condition._prim()
         self._stack[-1].append(condition)
         self._stack.append([])
         if priority is None:
@@ -32,8 +35,8 @@ class ConditionStack:
             if level:
                 conditions.extend((False, neg) for neg in level[:-1])
                 pos = level[-1]
-                if not (isinstance(pos, Const) and pos.value):
-                    conditions.append((True, level[-1]))
+                if pos != PrimConst(bv('1')):
+                    conditions.append((True, pos))
         return self._priority_stack[-1], tuple(conditions)
 
 

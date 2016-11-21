@@ -1,146 +1,58 @@
 import abc
-
 from . import context
-from . import expr
-from . import hashutil
+from .primitive import PrimStorage
 from .error import (
-    InvalidSignalAccess, InvalidSignalRead, InvalidSignalAssignment,
-    NoModuleUnderConstruction)
-
-
-def _check_signal_type(signal_type):
-    from .type import SignalType
-    if not isinstance(signal_type, SignalType):
-        raise TypeError("%r is not a SignalType" % (signal_type,))
-    return signal_type
-
-
-class NotAccessibleClass:
-    def __repr__(self):
-        return "<<NotAccessible>>"
-
-NotAccessible = NotAccessibleClass()
-
-
-def _allow_access(to_module, from_module):
-    if to_module is NotAccessible:
-        return False
-    elif to_module is Constants:
-        return True
-    else:
-        return to_module is from_module
+    ValueNotAvailable, InvalidSignalRead, InvalidSignalAssignment)
 
 
 class Signal(metaclass=abc.ABCMeta):
-    def __new__(cls, *args, **kwds):
-        # pylint: disable=missing-kwoa
-        mixin_type, signal_type = cls._mixin_parameters(*args, **kwds)
-        # TODO Memoize combined types
-        # TODO If one subclass of signal_type can have instances with different
-        # mixins the naming logic here fails
-        combined_type = type(
-            '%s(%s)' % (cls.__name__, type(signal_type).__name__),
-            (mixin_type, cls), {})
-        return super().__new__(combined_type)
-
     @classmethod
-    def _mixin_parameters(cls, signal_type, *args, **kwds):
-        return _check_signal_type(signal_type).signal_mixin, signal_type
+    def _from_prims(cls, signal_type, prims):
+        return cls(signal_type, prims)
 
-    def __init__(self, signal_type, *, module, rmodule, lmodule):
-        self._named = None
-        self.__module = module
-        self.__rmodule = rmodule
-        self.__lmodule = lmodule
-        self.__signal_type = signal_type
-        self._assignments = []
+    def __init__(self, signal_type, prims, storage=False):
+        self._signal_type = signal_type
+        assert len(signal_type._prim_shape) == len(prims)
+        assert all(
+            prims[k].shape == v[1:]
+            for k, v in signal_type._prim_shape.items())
+        self._prims = prims
+        self._storage = storage
 
     @property
     def signal_type(self):
-        return self.__signal_type
-
-    @property
-    def module(self):
-        return self.__module
-
-    @property
-    def rmodule(self):
-        return self.__rmodule
-
-    @property
-    def lmodule(self):
-        return self.__lmodule
-
-    def __repr__(self):
-        return "Signal(%r)" % (self.signal_type)
-
-    def _access_read(self):
-        module = context.current().module
-        if not _allow_access(self.rmodule, module):
-            if self.rmodule == NotAccessible:
-                raise InvalidSignalRead(
-                    "non-readable signal read from module %r" %
-                    module)
-            else:
-                raise InvalidSignalRead(
-                    "signal readable only from module %r read from %r" %
-                    (self.rmodule, module))
-        return self
-
-    def _access_assign(self):
-        module = context.current().module
-        if not _allow_access(self.lmodule, module):
-            if self.lmodule == NotAccessible:
-                raise InvalidSignalAssignment(
-                    "non-assignable signal assigned from module %r" %
-                    module)
-            else:
-                raise InvalidSignalAssignment(
-                    "signal assignable only from module %r assigned from %r" %
-                    (self.lmodule, module))
+        return self._signal_type
 
     def assign(self, value):
-        self._access_assign()
+        module = context.current().module
+        condition_stack = module._module_data.condition_stack
         value = self.signal_type.convert(value, implicit=True)
-        value._access_read()
-        module_data = context.current().module._module_data
-        priority, conditions = module_data.condition_stack.current_conditions()
-        module_data.assignments.append((self, priority, conditions, value))
-        self._assignments.append((priority, conditions, value))
+        self._access(write=True)
+        value._access(write=False)
 
-    def _auto_lvalue(self, *args, **kwds):
-        try:
-            module = context.current().module
-        except NoModuleUnderConstruction:
-            # TODO Better error reporting for this case
-            module = Constants
-        allow_read = _allow_access(self.rmodule, module)
-        allow_assign = _allow_access(self.lmodule, module)
-        if not allow_read and not allow_assign:
-            if self.rmodule == NotAccessible:
-                raise InvalidSignalAccess(
-                    "signal assignable only from module %r accessed from %r" %
-                    (self.lmodule, module))
-            elif self.lmodule == NotAccessible:
-                raise InvalidSignalAccess(
-                    "signal readable only from module %r accessed from %r" %
-                    (self.rmodule, module))
-            elif self.rmodule == self.lmodule:
-                raise InvalidSignalAccess(
-                    "signal accessible only from module %r accessed from %r" %
-                    (self.rmodule, module))
+        for key, (flip, *_) in self.signal_type._prim_shape.items():
+            target, source = self._prims[key], value._prims[key]
+            if flip:
+                target, source = source, target
+
+            priority, condition = condition_stack.current_conditions()
+
+            module._module_data.assignments.append(
+                (target, priority, condition, source))
+
+    def _access(self, write=False):
+        module = context.current().module
+        for key, (flip, *_) in self.signal_type._prim_shape.items():
+            prim = self._prims[key]
+
+            write_prim = write ^ flip
+
+            if write_prim:
+                if module not in prim.allowed_writers:
+                    raise InvalidSignalAssignment  # TODO Message
             else:
-                raise InvalidSignalAccess(
-                    "signal accessible only from modules %r and %r "
-                    "accessed from %r" %
-                    (self.lmodule, self.rmodule, module))
-
-        return Value._auto(
-            *args, **kwds,
-            allow_read=allow_read, allow_assign=allow_assign)
-
-    def _auto_rewrite(self, *args, **kwds):
-        return self._auto_lvalue(self.signal_type, *args, **kwds)
+                if module not in prim.allowed_readers:
+                    raise InvalidSignalRead  # TODO Message
 
     def __setitem__(self, key, value):
         if key == slice(None, None, None):
@@ -162,12 +74,12 @@ class Signal(metaclass=abc.ABCMeta):
         # pylint: disable=no-self-use, unused-variable
         return NotImplemented
 
-    def _const_signal(self, signal_type):
-        # pylint: disable=no-self-use
+    def _const_signal(self, signal_type, *, implicit):
+        # pylint: disable=no-self-use, unused-variable
         return NotImplemented
 
-    def _generic_const_signal(self, signal_type_class):
-        # pylint: disable=no-self-use
+    def _generic_const_signal(self, signal_type_class, *, implicit):
+        # pylint: disable=no-self-use, unused-variable
         return NotImplemented
 
     def as_implicit(self, name):
@@ -175,204 +87,66 @@ class Signal(metaclass=abc.ABCMeta):
         Implicit._module_scope_bind(name, self)
         return self
 
-    def _deflip(self):
-        return self
-
-    def flip(self):
-        from .type.flip import Flip
-        module = context.current().module
-        # Note that lmodule and rmodule are swapped below
-        allow_read = _allow_access(self.lmodule, module)
-        allow_assign = _allow_access(self.rmodule, module)
-        if not allow_read and not allow_assign:
-            if self.rmodule == NotAccessible:
-                raise InvalidSignalAccess(
-                    "signal assignable only from module %r accessed from %r" %
-                    (self.lmodule, module))
-            elif self.lmodule == NotAccessible:
-                raise InvalidSignalAccess(
-                    "signal readable only from module %r accessed from %r" %
-                    (self.rmodule, module))
-            elif self.rmodule == self.lmodule:
-                raise InvalidSignalAccess(
-                    "signal accessible only from module %r accessed from %r" %
-                    (self.rmodule, module))
-            else:
-                raise InvalidSignalAccess(
-                    "signal accessible only from modules %r and %r "
-                    "accessed from %r" %
-                    (self.lmodule, self.rmodule, module))
-        return Value._auto(
-            Flip(self.signal_type), expr.Flip(self),
-            allow_read=allow_read, allow_assign=allow_assign)
-
     def __hash__(self):
         raise TypeError("signals are not hashable")
 
-    def _hash_key(self):
-        return hashutil.HashInstance(self)
-
-    def named(self, name):
-        self._named = str(name)
-        return self
-
-
-class StorageSignal(Signal, metaclass=abc.ABCMeta):
-    def __init__(self, signal_type, *, module, rmodule, lmodule):
-        super().__init__(
-            signal_type, module=module, rmodule=rmodule, lmodule=lmodule)
-        self._lowered = None
-        module._module_data.storage_signals.append(self)
-
-
-class Wire(StorageSignal):
-    def __init__(self, signal_type):
-        # TODO Allow construction with automatic assignment
-        module = context.current().module
-        super().__init__(
-            signal_type,
-            module=module,
-            lmodule=module,
-            rmodule=module)
-
-    def __repr__(self):
-        return "Wire(%r)" % (self.signal_type)
-
-
-class IOPort(StorageSignal, metaclass=abc.ABCMeta):
-    def __init__(self, signal_type, *, module, rmodule, lmodule):
-        super().__init__(
-            signal_type,
-            module=module, rmodule=rmodule, lmodule=lmodule)
-
-
-class Input(IOPort):
-    def __init__(self, signal_type):
-        module = context.current().module
-        super().__init__(
-            signal_type,
-            module=module,
-            lmodule=module.parent or NotAccessible,
-            rmodule=module)
-
-    def __repr__(self):
-        return "Input(%r)" % (self.signal_type)
-
-
-class Output(IOPort):
-    def __init__(self, signal_type):
-        module = context.current().module
-        super().__init__(
-            signal_type,
-            module=module,
-            lmodule=module,
-            rmodule=module.parent or NotAccessible)
-
-    def __repr__(self):
-        return "Output(%r)" % (self.signal_type)
-
-
-class Value(Signal):
-    def __init__(
-            self, signal_type, value_expr, *,
-            allow_read=True, allow_assign=False):
-        module = context.current().module
-        super().__init__(
-            signal_type,
-            module=module,
-            lmodule=module if allow_assign else NotAccessible,
-            rmodule=module if allow_read else NotAccessible)
-        self.__expr = value_expr
-        self.__hash_key = (
-            Value,
-            allow_read,
-            allow_assign,
-            signal_type,
-            hashutil.hash_key(value_expr))
-
-    @property
-    def expr(self):
-        return self.__expr
-
-    @staticmethod
-    def _auto_concat_lvalue(signals, *args, **kwds):
-        try:
-            module = context.current().module
-        except NoModuleUnderConstruction:
-            # TODO Better error reporting for this case
-            module = Constants
-        allow_read = all(
-            _allow_access(signal.rmodule, module) for signal in signals)
-        allow_assign = all(
-            _allow_access(signal.lmodule, module) for signal in signals)
-
-        if not allow_read and not allow_assign:
-            # TODO More specific error messages
-            raise InvalidSignalAccess(
-                "concatenation of signals not accessible together "
-                "from module %r" % module)
-
-        return Value._auto(
-            *args, **kwds,
-            allow_read=allow_read, allow_assign=allow_assign)
-
-    @staticmethod
-    def _auto(
-            signal_type, value_expr, *,
-            allow_read=True, allow_assign=False):
-        from .eval import const_expr_eval
-
-        raw_value = const_expr_eval.eval_value(value_expr)
-
-        if raw_value is not None:
-            return Const(signal_type, raw_value)
-
-        module = context.current().module
-        # TODO recursive computation of cache_tuple? caching of cache_tuple?
-
-        result = Value(
-            signal_type, value_expr,
-            allow_read=allow_read, allow_assign=allow_assign)
-        hash_key = hashutil.hash_key(result)
-        try:
-            return module._module_data.common_values[hash_key]
-        except KeyError:
-            module._module_data.common_values[hash_key] = result
-            return result
-
-    def _hash_key(self):
-        return self.__hash_key
-
-
-class ConstantsClass:
-    pass
-
-Constants = ConstantsClass()
-
-
-class Const(Signal):
-    @classmethod
-    def _mixin_parameters(cls, signal_type, raw_value):
-        return _check_signal_type(signal_type).const_mixin, signal_type
-
-    def __init__(self, signal_type, raw_value):
-        super().__init__(
-            signal_type,
-            module=Constants,
-            lmodule=NotAccessible,
-            rmodule=Constants)
-        self.__raw_value = raw_value
-
-    @property
-    def raw_value(self):
-        return self.__raw_value
-
-    @property
+    @abc.abstractproperty
     def value(self):
-        return self.raw_value
+        pass
 
-    def __repr__(self):
-        return "%r[%r]" % (self.signal_type, self.value)
+    def _prim(self, key=()):
+        return self._prims[key]
 
-    def _access_read(self):
-        return self
+    def _prim_value(self, key=()):
+        def raise_fn(prim):
+            raise ValueNotAvailable  # TODO Message
+
+        return self._prim(key).eval(raise_fn)
+
+
+_flip_dir = {'input': 'output', 'output': 'input'}
+
+
+def _make_storage(signal_type, direction=None):
+    module = context.current().module
+    prims = {}
+    shape = signal_type._prim_shape
+
+    flipped = _flip_dir.get(direction)
+
+    for key in sorted(shape.keys()):
+        flip, width, *dimensions = shape[key]
+
+        prims[key] = PrimStorage(
+            module=module,
+            width=width,
+            dimensions=dimensions,
+            direction=flipped if flip else direction)
+
+    return signal_type._signal_class(signal_type, prims, storage=True)
+
+
+def Wire(signal_type):
+    return _make_storage(signal_type)
+
+
+def Input(signal_type):
+    return _make_storage(signal_type, direction='input')
+
+
+def Output(signal_type):
+    return _make_storage(signal_type, direction='output')
+
+
+def Reg(signal_type, clk=None):
+    from .type.clock import Clock
+    from .implicit import Implicit
+
+    if clk is None:
+        clk = Implicit('clk')
+    if not isinstance(clk.signal_type, Clock):
+        raise TypeError('clk must be of signal type Clock')
+
+    signal = Wire(signal_type)
+    # TODO Actually make a register
+    return signal

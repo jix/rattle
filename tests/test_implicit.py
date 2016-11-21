@@ -1,7 +1,6 @@
 from pytest import raises
 from rattle.module import *
 from rattle.signal import *
-from rattle.reg import *
 from rattle.type import *
 from rattle.error import *
 from rattle.implicit import *
@@ -111,9 +110,15 @@ def test_paths_as_names():
 
 def test_non_readable_signal(module):
     self = module
+
+    class Inner(Module):
+        def construct(self):
+            self.wire = Wire(Bool)
+    self.inner = Inner()
+
     self.output = Output(Bool)
     with raises(InvalidSignalRead):
-        with Implicit.bind('implicit', self.output):
+        with Implicit.bind('implicit', self.inner.wire):
             pass
 
 

@@ -24,3 +24,7 @@ class NoCommonSignalType(ConversionNotImplemented):
 
 class ImplicitNotFound(RuntimeError):
     pass
+
+
+class ValueNotAvailable(RuntimeError):
+    pass

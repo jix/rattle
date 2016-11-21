@@ -15,14 +15,6 @@ class SignalType(metaclass=SignalMeta):
     def __getitem__(self, key):
         return self.convert(key)
 
-    @property
-    def signal_mixin(self):
-        return SignalMixin
-
-    @property
-    def const_mixin(self):
-        return self.signal_mixin
-
     @abc.abstractproperty
     def _signature_tuple(self):
         pass
@@ -119,9 +111,6 @@ class SignalType(metaclass=SignalMeta):
         # pylint: disable=unused-variable
         return NotImplemented
 
-    def short_repr(self):
-        return repr(self)
-
     def __or__(self, other):
         if self == other:
             return self
@@ -136,6 +125,26 @@ class SignalType(metaclass=SignalMeta):
             raise NoCommonSignalType(
                 "no common signal type for given types %r" % tuple(types))
 
+    @abc.abstractproperty
+    def _prim_shape(self):
+        pass
 
-class SignalMixin(Signal):
-    pass
+    @abc.abstractproperty
+    def _signal_class(self):
+        pass
+
+    def _from_prims(self, prims):
+        return self._signal_class._from_prims(self, prims)
+
+
+class BasicType(SignalType, metaclass=SignalMeta):
+    @property
+    def _prim_shape(self):
+        return {(): (False, self._prim_width,)}
+
+    @abc.abstractproperty
+    def _prim_width(self):
+        pass
+
+    def _from_prim(self, prim):
+        return self._from_prims({(): prim})

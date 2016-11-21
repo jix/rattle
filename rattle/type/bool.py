@@ -1,11 +1,10 @@
 from .type import *
-
-from .. import expr
-from ..signal import Value, Const
+from ..signal import Signal
+from ..primitive import *
 from ..bitvec import bv, xbool
 
 
-class BoolType(SignalType):
+class BoolType(BasicType):
     def __repr__(self):
         return "Bool"
 
@@ -15,44 +14,56 @@ class BoolType(SignalType):
 
     def _const_signal(self, value, *, implicit):
         # pylint: disable=unused-variable
-        return Const(Bool, bv(xbool(value)))
+        return Bool._from_prim(PrimConst(bv(xbool(value))))
+
+    @property
+    def _prim_width(self):
+        return 1
+
+    @property
+    def _signal_class(self):
+        return BoolSignal
 
 
 Bool = BoolType()
 BoolType.__new__ = lambda cls: Bool
 
 
-class BoolMixin(SignalMixin):
+class BoolSignal(Signal):
     def __invert__(self):
-        self._access_read()
-        return Value._auto(Bool, expr.Not(self))
+        return Bool._from_prim(PrimNot(self._prim()))
 
     def _binary_bitop(self, other, op):
         try:
             other = self.signal_type.convert(other, implicit=True)
         except ConversionNotImplemented:
             return NotImplemented
-        self._access_read()
-        other._access_read()
-        return Value._auto(Bool, op(self, other))
+        return Bool._from_prim(
+            op(self._prim(), other._prim()))
 
     def __and__(self, other):
-        return self._binary_bitop(other, expr.And)
+        return self._binary_bitop(other, PrimAnd)
 
     def __rand__(self, other):
         return self.__and__(other)
 
     def __or__(self, other):
-        return self._binary_bitop(other, expr.Or)
+        return self._binary_bitop(other, PrimOr)
 
     def __ror__(self, other):
         return self.__or__(other)
 
     def __xor__(self, other):
-        return self._binary_bitop(other, expr.Xor)
+        return self._binary_bitop(other, PrimXor)
 
     def __rxor__(self, other):
         return self.__xor__(other)
+
+    def __eq__(self, other):
+        return self._binary_bitop(other, PrimEq)
+
+    def __ne__(self, other):
+        return ~(self == other)
 
     def repeat(self, count):
         from .bits import Bits
@@ -61,11 +72,9 @@ class BoolMixin(SignalMixin):
         elif count < 0:
             raise ValueError('repitition count must not be negative')
         else:
-            self._access_read()
-            return Value._auto(Bits(count), expr.Repeat(count, self))
+            return Bits(count)._from_prim(
+                PrimRepeat(count, self._prim()))
 
     @property
     def value(self):
-        return self.raw_value[0]
-
-BoolType.signal_mixin = BoolMixin
+        return self._prim_value()[0]

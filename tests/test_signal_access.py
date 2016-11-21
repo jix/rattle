@@ -33,7 +33,7 @@ def test_wire_invalid_assignment():
     Mod2()
 
 
-def test_input_invalid_read():
+def test_input_outside_read():
     class Mod1(Module):
         def construct(self):
             self.input = Input(Bool)
@@ -42,8 +42,7 @@ def test_input_invalid_read():
         def construct(self):
             self.mod1 = Mod1()
             self.wire = Wire(Bool)
-            with raises(InvalidSignalRead):
-                self.wire[:] = self.mod1.input
+            self.wire[:] = self.mod1.input
     Mod2()
 
 
@@ -56,12 +55,12 @@ def test_input_invalid_assignment():
     Mod()
 
 
-def test_output_invalid_read():
+def test_output_inside_read():
     class Mod(Module):
         def construct(self):
             self.output = Output(Bool)
-            with raises(InvalidSignalRead):
-                self.output[:] = self.output
+            self.wire = Wire(Bool)
+            self.wire[:] = self.output
     Mod()
 
 
@@ -82,3 +81,5 @@ def test_output_invalid_assignment():
 def test_constant_invalid_assignment(module):
     with raises(InvalidSignalAssignment):
         Bool[True][:] = Bool[False]
+
+# TODO tests with flip

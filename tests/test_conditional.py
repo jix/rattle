@@ -1,109 +1,113 @@
 from rattle.module import *
 from rattle.signal import *
-from rattle.reg import *
 from rattle.type import *
 from rattle.conditional import *
 
-# TODO Currently these tests poke into internals
-# replace with simulation tests when ready
-
 
 def test_single_when(module):
-    module.reg = Reg(Bits(10))
-    module.condition = Input(Bool)
-    module.reg2 = Reg(Bool)
+    self = module
+    self.reg = Reg(Bits(10))
+    self.condition = Input(Bool)
+    self.reg2 = Reg(Bool)
 
-    with when(module.condition):
-        module.reg[:] = module.reg ^ Bits['1010101010']
+    with when(self.condition):
+        self.reg[:] = self.reg ^ Bits['1010101010']
 
-    module.reg2[:] = module.condition
+    self.reg2[:] = self.condition
 
-    assert module.reg._assignments[0][1] == ((True, module.condition),)
-    assert module.reg2._assignments[0][1] == ()
+    assert self._module_data.assignments[0][2] == (
+        (True, self.condition._prim()),)
+    assert self._module_data.assignments[1][2] == ()
 
 
 def test_when_otherwise(module):
-    module.reg = Reg(Bits(10))
-    module.condition = Input(Bool)
+    self = module
+    self.reg = Reg(Bits(10))
+    self.condition = Input(Bool)
 
-    with when(module.condition):
-        module.reg[:] = module.reg ^ Bits['1010101010']
+    with when(self.condition):
+        self.reg[:] = self.reg ^ Bits['1010101010']
     with otherwise:
-        module.reg[:] = module.reg ^ Bits['1100110011']
+        self.reg[:] = self.reg ^ Bits['1100110011']
 
-    assert module.reg._assignments[0][1] == ((True, module.condition),)
-    assert module.reg._assignments[1][1] == ((False, module.condition),)
+    assert self._module_data.assignments[0][2] == (
+        (True, self.condition._prim()),)
+    assert self._module_data.assignments[1][2] == (
+        (False, self.condition._prim()),)
 
 
 def test_when_elwhen(module):
-    module.reg = Reg(Bits(10))
-    module.condition_a = Input(Bool)
-    module.condition_b = Input(Bool)
+    self = module
+    self.reg = Reg(Bits(10))
+    self.condition_a = Input(Bool)
+    self.condition_b = Input(Bool)
 
-    with when(module.condition_a):
-        module.reg[:] = module.reg ^ Bits['1010101010']
-    with elwhen(module.condition_b):
-        module.reg[:] = module.reg ^ Bits['0101010101']
+    with when(self.condition_a):
+        self.reg[:] = self.reg ^ Bits['1010101010']
+    with elwhen(self.condition_b):
+        self.reg[:] = self.reg ^ Bits['0101010101']
 
-    assert module.reg._assignments[0][1] == (
-        (True, module.condition_a),
+    assert self._module_data.assignments[0][2] == (
+        (True, self.condition_a._prim()),
     )
-    assert module.reg._assignments[1][1] == (
-        (False, module.condition_a),
-        (True, module.condition_b),
+    assert self._module_data.assignments[1][2] == (
+        (False, self.condition_a._prim()),
+        (True, self.condition_b._prim()),
     )
 
 
 def test_when_elwhen_otherwise(module):
-    module.reg = Reg(Bits(10))
-    module.condition_a = Input(Bool)
-    module.condition_b = Input(Bool)
+    self = module
+    self.reg = Reg(Bits(10))
+    self.condition_a = Input(Bool)
+    self.condition_b = Input(Bool)
 
-    with when(module.condition_a):
-        module.reg[:] = module.reg ^ Bits['1010101010']
-    with elwhen(module.condition_b):
-        module.reg[:] = module.reg ^ Bits['0101010101']
+    with when(self.condition_a):
+        self.reg[:] = self.reg ^ Bits['1010101010']
+    with elwhen(self.condition_b):
+        self.reg[:] = self.reg ^ Bits['0101010101']
     with otherwise:
-        module.reg[:] = module.reg ^ Bits['1100110011']
+        self.reg[:] = self.reg ^ Bits['1100110011']
 
-    assert module.reg._assignments[0][1] == (
-        (True, module.condition_a),
+    assert self._module_data.assignments[0][2] == (
+        (True, self.condition_a._prim()),
     )
-    assert module.reg._assignments[1][1] == (
-        (False, module.condition_a),
-        (True, module.condition_b),
+    assert self._module_data.assignments[1][2] == (
+        (False, self.condition_a._prim()),
+        (True, self.condition_b._prim()),
     )
-    assert module.reg._assignments[2][1] == (
-        (False, module.condition_a),
-        (False, module.condition_b),
+    assert self._module_data.assignments[2][2] == (
+        (False, self.condition_a._prim()),
+        (False, self.condition_b._prim()),
     )
 
 
 def test_nested_when(module):
-    module.reg = Reg(Bits(10))
-    module.condition_a = Input(Bool)
-    module.condition_b = Input(Bool)
-    module.condition_c = Input(Bool)
+    self = module
+    self.reg = Reg(Bits(10))
+    self.condition_a = Input(Bool)
+    self.condition_b = Input(Bool)
+    self.condition_c = Input(Bool)
 
-    with when(module.condition_a):
-        with when(module.condition_b):
-            module.reg[:] = module.reg ^ Bits['1010101010']
+    with when(self.condition_a):
+        with when(self.condition_b):
+            self.reg[:] = self.reg ^ Bits['1010101010']
     with otherwise:
-        with when(module.condition_b):
-            module.reg[:] = module.reg ^ Bits['0101010101']
-        with elwhen(module.condition_c):
-            module.reg[:] = module.reg ^ Bits['1100110011']
+        with when(self.condition_b):
+            self.reg[:] = self.reg ^ Bits['0101010101']
+        with elwhen(self.condition_c):
+            self.reg[:] = self.reg ^ Bits['1100110011']
 
-    assert module.reg._assignments[0][1] == (
-        (True, module.condition_a),
-        (True, module.condition_b),
+    assert self._module_data.assignments[0][2] == (
+        (True, self.condition_a._prim()),
+        (True, self.condition_b._prim()),
     )
-    assert module.reg._assignments[1][1] == (
-        (False, module.condition_a),
-        (True, module.condition_b),
+    assert self._module_data.assignments[1][2] == (
+        (False, self.condition_a._prim()),
+        (True, self.condition_b._prim()),
     )
-    assert module.reg._assignments[2][1] == (
-        (False, module.condition_a),
-        (False, module.condition_b),
-        (True, module.condition_c),
+    assert self._module_data.assignments[2][2] == (
+        (False, self.condition_a._prim()),
+        (False, self.condition_b._prim()),
+        (True, self.condition_c._prim()),
     )

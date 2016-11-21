@@ -2,9 +2,9 @@ import abc
 
 from .type import *
 from .bits import *
-from .bool import Bool
+from ..primitive import *
 from ..bitvec import X
-from ..bitmath import signext
+from ..bitmath import bitmask, signext
 
 
 class Int(BitsLike, metaclass=SignalMeta):
@@ -40,7 +40,7 @@ class Int(BitsLike, metaclass=SignalMeta):
             return NotImplemented
 
 
-class IntMixin(BitsLikeMixin):
+class IntSignal(BitsLikeSignal):
     def _convert(self, signal_type, *, implicit):
         if signal_type.__class__ == Bits:
             return self.resize(signal_type.width).as_bits()
@@ -54,7 +54,7 @@ class IntMixin(BitsLikeMixin):
         return super()._generic_convert(signal_type_class, implicit=implicit)
 
     def as_bits(self):
-        return self._auto_lvalue(Bits(self.width), expr.Nop(self))
+        return Bits(self.width)._from_prim(self._prim())
 
     def __and__(self, other):
         try:
@@ -75,9 +75,8 @@ class IntMixin(BitsLikeMixin):
         else:
             result_width = min(a.width, b.width)
         a, b = a.resize(result_width), b.resize(result_width)
-        a._access_read()
-        b._access_read()
-        return Value._auto(result_type(result_width), expr.And(a, b))
+        return result_type(result_width)._from_prim(
+            PrimAnd(a._prim(), b._prim()))
 
     def _binary_bitop(self, other, op, result_override=None, signed_op=None):
         try:
@@ -96,8 +95,6 @@ class IntMixin(BitsLikeMixin):
             result_type = UInt
             result_width = max(a.width, b.width)
         a, b = a.extend(result_width), b.extend(result_width)
-        a._access_read()
-        b._access_read()
 
         if signed_op is not None and result_type(result_width).signed:
             op = signed_op
@@ -107,7 +104,7 @@ class IntMixin(BitsLikeMixin):
         else:
             result_type = result_override
 
-        return Value._auto(result_type, op(a, b))
+        return result_type._from_prim(op(a._prim(), b._prim()))
 
     def __add__(self, other):
         try:
@@ -120,9 +117,8 @@ class IntMixin(BitsLikeMixin):
             a.signal_type.max_value + b.signal_type.max_value)
         result_width = result_type.width
         a, b = a.extend(result_width), b.extend(result_width)
-        a._access_read()
-        b._access_read()
-        return Value._auto(result_type, expr.Add(a, b))
+        return result_type._from_prim(
+            PrimAdd(a._prim(), b._prim()))
 
     def __radd__(self, other):
         return self + other
@@ -138,9 +134,8 @@ class IntMixin(BitsLikeMixin):
             a.signal_type.max_value - b.signal_type.min_value)
         result_width = result_type.width
         a, b = a.extend(result_width), b.extend(result_width)
-        a._access_read()
-        b._access_read()
-        return Value._auto(result_type, expr.Sub(a, b))
+        return result_type._from_prim(
+            PrimSub(a._prim(), b._prim()))
 
     def __rsub__(self, other):
         try:
@@ -166,9 +161,8 @@ class IntMixin(BitsLikeMixin):
         if result_width == 0:
             return UInt(0)[0]
         a, b = a.resize(result_width), b.resize(result_width)
-        a._access_read()
-        b._access_read()
-        return Value._auto(result_type, expr.Mul(a, b))
+        return result_type._from_prim(
+            PrimMul(a._prim(), b._prim()))
 
     def __rmul__(self, other):
         return self * other
@@ -177,15 +171,16 @@ class IntMixin(BitsLikeMixin):
         return 0 - self
 
     def __eq__(self, other):
-        return self._binary_bitop(other, expr.Eq, result_override=Bool)
+        from .bool import Bool
+        return self._binary_bitop(other, PrimEq, result_override=Bool)
 
     def __lt__(self, other):
+        from .bool import Bool
         return self._binary_bitop(
-            other, expr.Lt, result_override=Bool, signed_op=expr.Slt)
+            other, PrimLt, result_override=Bool, signed_op=PrimSignedLt)
 
     def __le__(self, other):
-        return self._binary_bitop(
-            other, expr.Le, result_override=Bool, signed_op=expr.Sle)
+        return ~(self > other)
 
     def __gt__(self, other):
         try:
@@ -195,13 +190,7 @@ class IntMixin(BitsLikeMixin):
         return other < self
 
     def __ge__(self, other):
-        try:
-            other = Int.generic_convert(other, implicit=True)
-        except ConversionNotImplemented:
-            return NotImplemented
-        return other <= self
-
-Int.signal_mixin = IntMixin
+        return ~(self < other)
 
 
 class UInt(Int):
@@ -221,7 +210,11 @@ class UInt(Int):
     def _generic_const_signal(cls, value, *, implicit):
         # pylint: disable=bad-super-call
         # We intentionally skip the Int version as it will call this one
-        return super(Int, cls)._generic_const_signal(value, implicit=implicit)
+        return super(Int, cls)._generic_const_signal(
+            value, implicit=implicit).as_uint()
+
+    def _const_signal(self, value, *, implicit):
+        return super()._const_signal(value, implicit=implicit).as_uint()
 
     def _convert(self, signal, *, implicit):
         if not implicit and signal.signal_type.__class__ == Bits:
@@ -234,8 +227,12 @@ class UInt(Int):
             return signal.as_uint()
         return super()._generic_convert(signal, implicit=implicit)
 
+    @property
+    def _signal_class(self):
+        return UIntSignal
 
-class UIntMixin(IntMixin):
+
+class UIntSignal(IntSignal):
     def _convert(self, signal_type, *, implicit):
         if signal_type.__class__ == SInt:
             return self.resize(signal_type.width).as_bits().as_sint()
@@ -252,23 +249,25 @@ class UIntMixin(IntMixin):
         return self.extend(self.width + 1).as_bits().as_sint()
 
     def _extend_unchecked(self, width):
-        self._access_read()
-        return Value._auto(UInt(width), expr.ZeroExt(width, self))
+        return UInt(width)._from_prim(
+            PrimZeroExt(width, self._prim()))
 
     def _truncate_unchecked(self, width):
-        return self._auto_lvalue(UInt(width), expr.ConstSlice(0, width, self))
+        return UInt(width)._from_prim(
+            PrimSlice(0, width, self._prim()))
 
     def __invert__(self):
-        return ~self.as_sint()
+        return (~self.extend(self.width + 1).as_bits()).as_sint()
 
     @property
     def value(self):
-        if self.raw_value.mask == 0:
-            return self.raw_value.value
-        else:
+        value = self._prim_value()
+        if value.mask == 0:
+            return value.value
+        elif value.mask == bitmask(self.width):
             return X
-
-UInt.signal_mixin = UIntMixin
+        else:
+            return value
 
 
 class SInt(Int):
@@ -296,15 +295,17 @@ class SInt(Int):
                 width = (~value).bit_length() + 1
             else:
                 width = value.bit_length() + 1
-            return Const(cls(width), BitVec(width, value))
+            return SInt(width)._from_prim(
+                PrimConst(BitVec(width, value)))
         else:
-            return super()._generic_const_signal(value, implicit=implicit)
+            return super()._generic_const_signal(
+                value, implicit=implicit).as_sint()
 
     def _const_signal(self, value, *, implicit):
         if isinstance(value, int):
             return SInt[value].extend(self.width)
         else:
-            return super()._const_signal(value, implicit=implicit)
+            return super()._const_signal(value, implicit=implicit).as_sint()
 
     def _convert(self, signal, *, implicit):
         if not implicit and signal.signal_type.__class__ == Bits:
@@ -317,8 +318,12 @@ class SInt(Int):
             return signal.as_sint()
         return super()._generic_convert(signal, implicit=implicit)
 
+    @property
+    def _signal_class(self):
+        return SIntSignal
 
-class SIntMixin(IntMixin):
+
+class SIntSignal(IntSignal):
     def _convert(self, signal_type, *, implicit):
         if signal_type.__class__ == UInt:
             return self.resize(signal_type.width).as_bits().as_uint()
@@ -327,17 +332,22 @@ class SIntMixin(IntMixin):
         return super()._convert(signal_type, implicit=implicit)
 
     def _extend_unchecked(self, width):
-        self._access_read()
-        return Value._auto(SInt(width), expr.SignExt(width, self))
+        return SInt(width)._from_prim(
+            PrimSignExt(width, self._prim()))
 
     def _truncate_unchecked(self, width):
-        return self._auto_lvalue(SInt(width), expr.ConstSlice(0, width, self))
+        return SInt(width)._from_prim(
+            PrimSlice(0, width, self._prim()))
+
+    def __invert__(self):
+        return super().__invert__().as_sint()
 
     @property
     def value(self):
-        if self.raw_value.mask == 0:
-            return signext(self.raw_value.width, self.raw_value.value)
-        else:
+        value = self._prim_value()
+        if value.mask == 0:
+            return signext(value.width, value.value)
+        elif value.mask == bitmask(self.width):
             return X
-
-SInt.signal_mixin = SIntMixin
+        else:
+            return value

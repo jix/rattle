@@ -47,7 +47,7 @@ class Implicit:
         for name, value in ((name, value), *additional_binds):
             Implicit._check_name(name)
             if isinstance(value, Signal):
-                value._access_read()
+                value._access()
             try:
                 old = module._module_data.implicit_bindings[name]
             except KeyError:
@@ -70,7 +70,7 @@ class Implicit:
         Implicit._check_name(name)
         module = context.current().module
         if isinstance(value, Signal):
-            value._access_read()
+            value._access()
         module._module_data.implicit_bindings[name] = value
 
     @staticmethod

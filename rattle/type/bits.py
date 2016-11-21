@@ -1,12 +1,13 @@
 from .type import *
-from .. import expr
-from ..signal import Value, Const
+from ..signal import Signal
+from ..primitive import *
 from ..error import ConversionNotImplemented
 from ..bitvec import BitVec, bv
-from ..slice import check_slice
+from ..slice import dispatch_getitem
 
 
-class BitsLike(SignalType, metaclass=SignalMeta):
+class BitsLike(BasicType, metaclass=SignalMeta):
+    # pylint: disable=abstract-method
     def __init__(self, width):
         super().__init__()
         if not isinstance(width, int):
@@ -27,14 +28,6 @@ class BitsLike(SignalType, metaclass=SignalMeta):
         return (type(self), self.width)
 
     @classmethod
-    def concat(cls, *signals):
-        # TODO Document lsb first order
-        # TODO Check for / coerce into Bits type
-        return Value._auto_concat_lvalue(
-            signals, cls(sum(signal.width for signal in signals)),
-            expr.Concat(signals))
-
-    @classmethod
     def _generic_const_signal(cls, value, *, implicit):
         if isinstance(value, int):
             if value < 0:
@@ -46,7 +39,7 @@ class BitsLike(SignalType, metaclass=SignalMeta):
             value = bv(value)
 
         if isinstance(value, BitVec):
-            return Const(cls(value.width), value)
+            return Bits(value.width)._from_prim(PrimConst(value))
         else:
             return super()._generic_const_signal(value, implicit=implicit)
 
@@ -62,19 +55,27 @@ class BitsLike(SignalType, metaclass=SignalMeta):
             value = BitVec(self.width, value)
         elif isinstance(value, str):
             value = bv(value)
+
         if isinstance(value, BitVec):
             if value.width != self.width:
                 raise ValueError(
                     "constant of wrong size (%i) for %r" % (value.width, self))
-            return Const(self, value)
+            return Bits(self.width)._from_prim(PrimConst(value))
         else:
             return super()._const_signal(value, implicit=implicit)
 
+    @property
+    def _prim_width(self):
+        return self.width
 
-class BitsLikeMixin(SignalMixin):
+
+class BitsLikeSignal(Signal):
     @property
     def width(self):
         return self.signal_type.width
+
+    def __len__(self):
+        return self.width
 
     def concat(self, *others):
         return Bits.concat(self, *others)
@@ -84,46 +85,41 @@ class BitsLikeMixin(SignalMixin):
         return Bits.concat(other, self)
 
     def __invert__(self):
-        self._access_read()
-        return Value._auto(self.signal_type, expr.Not(self))
+        return Bits(self.width)._from_prim(PrimNot(self._prim()))
 
-    def _binary_bitop(self, other, op):
+    def _binary_bitop(self, other, op, result_type=None):
         try:
             other = self.signal_type.convert(other, implicit=True)
         except ConversionNotImplemented:
             return NotImplemented
-        self._access_read()
-        other._access_read()
-        return Value._auto(self.signal_type, op(self, other))
+
+        if result_type is None:
+            result_type = self.signal_type
+
+        return result_type._from_prim(
+            op(self._prim(), other._prim()))
 
     def __and__(self, other):
-        return self._binary_bitop(other, expr.And)
+        return self._binary_bitop(other, PrimAnd)
 
     def __rand__(self, other):
         return self.__and__(other)
 
     def __or__(self, other):
-        return self._binary_bitop(other, expr.Or)
+        return self._binary_bitop(other, PrimOr)
 
     def __ror__(self, other):
         return self.__or__(other)
 
     def __xor__(self, other):
-        return self._binary_bitop(other, expr.Xor)
+        return self._binary_bitop(other, PrimXor)
 
     def __rxor__(self, other):
         return self.__xor__(other)
 
     def __eq__(self, other):
         from .bool import Bool
-        try:
-            other = self.signal_type.convert(other, implicit=True)
-        except ConversionNotImplemented:
-            return NotImplemented
-
-        self._access_read()
-        other._access_read()
-        return Value._auto(Bool, expr.Eq(self, other))
+        return self._binary_bitop(other, PrimEq, Bool)
 
     def __ne__(self, other):
         return ~(self == other)
@@ -157,11 +153,12 @@ class BitsLikeMixin(SignalMixin):
             return self.extend(width)
 
     def _extend_unchecked(self, width):
-        self._access_read()
-        return Value._auto(Bits(width), expr.ZeroExt(width, self))
+        return Bits(width)._from_prim(
+            PrimZeroExt(width, self._prim()))
 
     def _truncate_unchecked(self, width):
-        return self._auto_lvalue(Bits(width), expr.ConstSlice(0, width, self))
+        return Bits(width)._from_prim(
+            PrimSlice(0, width, self._prim()))
 
     def repeat(self, count):
         if not isinstance(count, int):
@@ -169,45 +166,53 @@ class BitsLikeMixin(SignalMixin):
         elif count < 0:
             raise ValueError('repitition count must not be negative')
         else:
-            self._access_read()
-            return Value._auto(
-                Bits(self.width * count), expr.Repeat(count, self))
+            return Bits(count * self.width)._from_prim(
+                PrimRepeat(count, self._prim()))
 
-    def __getitem__(self, index):
+    __getitem__ = dispatch_getitem
+
+    def _getitem_all(self):
+        return self
+
+    def _getitem_const_index(self, index):
         from .bool import Bool
+        return Bool._from_prim(PrimSlice(index, 1, self._prim()))
 
-        slice_type, params = check_slice(self.width, index)
+    def _getitem_dynamic_index(self, index):
+        from .bool import Bool
+        return Bool._from_prim(
+            PrimBitIndex(index._prim(), self._prim()))
 
-        if slice_type == 'all':
-            return super().__getitem__(index)
-        elif slice_type == 'const_index':
-            index = params
-            return self._auto_lvalue(Bool, expr.ConstIndex(index, self))
-        elif slice_type == 'dynamic_index':
-            index = params
-            index._access_read()
-            return self._auto_lvalue(Bool, expr.DynamicIndex(index, self))
-        elif slice_type == 'const_slice':
-            start, length = params
-            return self._auto_lvalue(
-                Bits(length), expr.ConstSlice(start, length, self))
-        else:
-            raise TypeError('unsupported index type')
+    def _getitem_const_slice(self, start, length):
+        return Bits(length)._from_prim(
+            PrimSlice(start, length, self._prim()))
 
-BitsLike.signal_mixin = BitsLikeMixin
+    @property
+    def value(self):
+        return self._prim_value()
 
 
 class Bits(BitsLike):
-    pass
+    @classmethod
+    def concat(cls, *signals):
+        # TODO Document lsb first order
+        # TODO Allow concat lvalue?
+        signals = [
+            Bits.generic_convert(signal, implicit=True) for signal in signals]
+        width = sum(signal.width for signal in signals)
+        return Bits(width)._from_prim(
+            PrimConcat(signal._prim() for signal in signals))
+
+    @property
+    def _signal_class(self):
+        return BitsSignal
 
 
-class BitsMixin(BitsLikeMixin):
+class BitsSignal(BitsLikeSignal):
     def as_uint(self):
         from .int import UInt
-        return self._auto_lvalue(UInt(self.width), expr.Nop(self))
+        return UInt(self.width)._from_prim(self._prim())
 
     def as_sint(self):
         from .int import SInt
-        return self._auto_lvalue(SInt(self.width), expr.Nop(self))
-
-Bits.signal_mixin = BitsMixin
+        return SInt(self.width)._from_prim(self._prim())
