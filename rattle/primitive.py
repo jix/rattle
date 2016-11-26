@@ -47,6 +47,9 @@ class PrimSignal(metaclass=abc.ABCMeta):
     def simplify(self):
         return self
 
+    def simplify_read(self):
+        return self
+
     @property
     def shape(self):
         return (self.width, *self.dimensions)
@@ -111,8 +114,41 @@ class PrimValue(PrimSignal, metaclass=abc.ABCMeta):
         return frozenset()
 
 
+class PrimReg(PrimValue):
+    def __init__(self, clk, en, reset, reset_mode, x):
+        assert clk.dimensions == ()
+        assert clk.width == 1
+        assert en is None or en.dimensions == ()
+        assert en is None or en.width == 1
+        assert reset is None or reset.dimensions == ()
+        assert reset is None or reset.width == 1
+        assert isinstance(x, PrimStorage)
+
+        super().__init__(width=x.width, dimensions=x.dimensions)
+        self.clk = clk
+        self.en = en
+        self.reset = reset
+        self.reset_mode = reset_mode
+        self.x = x
+
+    def tuple(self):
+        return (self.clk, self.en, self.reset, self.reset_mode, self.x)
+
+    def simplify_read(self):
+        return self.x
+
+    @property
+    def allowed_readers(self):
+        return self.x.allowed_readers
+
+    @property
+    def allowed_writers(self):
+        return self.x.allowed_writers
+
+
 class PrimIndex(PrimValue):
     def __init__(self, index, x):
+        index = index.simplify_read()
         assert index.dimensions == ()
         super().__init__(
             width=x.width,
@@ -130,6 +166,9 @@ class PrimIndex(PrimValue):
         else:
             return self
 
+    def simplify_read(self):
+        return PrimIndex(self.index, self.x.simplify_read())
+
     @property
     def allowed_readers(self):
         return self.x.allowed_readers & self.index.allowed_readers
@@ -141,6 +180,7 @@ class PrimIndex(PrimValue):
 
 class PrimNot(PrimValue):
     def __init__(self, x):
+        x = x.simplify_read()
         assert x.dimensions == ()
         super().__init__(
             width=x.width)
@@ -158,8 +198,9 @@ class PrimNot(PrimValue):
 
 
 class PrimConcat(PrimValue):
+    # TODO Make PrimConcat writable?
     def __init__(self, parts):
-        parts = tuple(parts)
+        parts = tuple(part.simplify_read() for part in parts)
         assert all(part.dimension == () for part in parts)
         super().__init__(
             width=sum(part.width for part in parts))
@@ -178,6 +219,7 @@ class PrimConcat(PrimValue):
 
 class PrimBinaryOp(PrimValue, metaclass=abc.ABCMeta):
     def __init__(self, a, b):
+        a, b = a.simplify_read(), b.simplify_read()
         assert a.dimensions == ()
         assert b.dimensions == ()
         assert a.width == b.width
@@ -226,6 +268,7 @@ class PrimMul(PrimBinaryOp):
 
 class PrimCompareOp(PrimValue, metaclass=abc.ABCMeta):
     def __init__(self, a, b):
+        a, b = a.simplify_read(), b.simplify_read()
         assert a.dimensions == ()
         assert b.dimensions == ()
         assert a.width == b.width
@@ -259,6 +302,7 @@ class PrimSignedLt(PrimCompareOp):
 
 class PrimExtendOp(PrimValue, metaclass=abc.ABCMeta):
     def __init__(self, width, x):
+        x = x.simplify_read()
         assert width >= x.width
         assert x.dimensions == ()
 
@@ -298,6 +342,9 @@ class PrimSlice(PrimValue):
     def eval(self, values):
         return values(self.x)[self.start:self.start + self.width]
 
+    def simplify_read(self):
+        return PrimSlice(self.start, self.width, self.x.simplify_read())
+
     @property
     def allowed_readers(self):
         return self.x.allowed_readers
@@ -309,6 +356,7 @@ class PrimSlice(PrimValue):
 
 class PrimRepeat(PrimValue):
     def __init__(self, count, x):
+        x = x.simplify_read()
         assert x.dimensions == ()
 
         super().__init__(width=x.width * count)
@@ -328,6 +376,7 @@ class PrimRepeat(PrimValue):
 
 class PrimBitIndex(PrimValue):
     def __init__(self, index, x):
+        index = index.simplify_read()
         assert index.dimensions == ()
         assert x.dimensions == ()
 
@@ -341,6 +390,9 @@ class PrimBitIndex(PrimValue):
     def eval(self, values):
         return bv(values(self.x)[values(self.index)])
 
+    def simplify_read(self):
+        return PrimBitIndex(self.index, self.x.simplify_read())
+
     @property
     def allowed_readers(self):
         return self.index.allowed_readers & self.x.allowed_readers
@@ -352,6 +404,7 @@ class PrimBitIndex(PrimValue):
 
 class PrimMux(PrimValue):
     def __init__(self, index, ports):
+        index = index.simplify_read()
         ports = tuple(ports)
         assert index.dimensions == ()
         assert len(ports) > 0
@@ -380,6 +433,10 @@ class PrimMux(PrimValue):
         assert res is not None
 
         return res
+
+    def simplify_read(self):
+        return PrimMux(
+            self.index, (port.simplify_read() for port in self.ports))
 
     @property
     def allowed_readers(self):
@@ -410,6 +467,9 @@ class PrimTable(PrimValue):
 
     def tuple(self):
         return self.table
+
+    def simplify_read(self):
+        return PrimTable((entry.simplify_read() for entry in self.table))
 
     @property
     def allowed_readers(self):

@@ -1,6 +1,6 @@
 import abc
 from . import context
-from .primitive import PrimStorage
+from .primitive import PrimStorage, PrimReg
 from .error import (
     ValueNotAvailable, InvalidSignalRead, InvalidSignalAssignment)
 
@@ -107,7 +107,7 @@ class Signal(metaclass=abc.ABCMeta):
 _flip_dir = {'input': 'output', 'output': 'input'}
 
 
-def _make_storage(signal_type, direction=None):
+def _make_storage(signal_type, direction=None, wrap_prims=lambda x: x):
     module = context.current().module
     prims = {}
     shape = signal_type._prim_shape
@@ -117,11 +117,11 @@ def _make_storage(signal_type, direction=None):
     for key in sorted(shape.keys()):
         flip, width, *dimensions = shape[key]
 
-        prims[key] = PrimStorage(
+        prims[key] = wrap_prims(PrimStorage(
             module=module,
             width=width,
             dimensions=dimensions,
-            direction=flipped if flip else direction)
+            direction=flipped if flip else direction))
 
     return signal_type._signal_class(signal_type, prims, storage=True)
 
@@ -144,9 +144,26 @@ def Reg(signal_type, clk=None):
 
     if clk is None:
         clk = Implicit('clk')
-    if not isinstance(clk.signal_type, Clock):
+
+    clock_type = clk.signal_type
+
+    if not isinstance(clock_type, Clock):
         raise TypeError('clk must be of signal type Clock')
 
-    signal = Wire(signal_type)
-    # TODO Actually make a register
+    clk._access()
+
+    clk_prim = clk.clk._prim()
+    if clock_type.reset not in ('init', False):
+        reset_prim = clk.reset._prim()
+    else:
+        reset_prim = None
+    if clock_type.gated:
+        en_prim = clk.en._prim()
+    else:
+        en_prim = None
+
+    def wrap_reg(prim):
+        return PrimReg(clk_prim, en_prim, reset_prim, clock_type.reset, prim)
+
+    signal = _make_storage(signal_type, wrap_prims=wrap_reg)
     return signal
