@@ -111,3 +111,36 @@ def test_nested_when(module):
         (False, self.condition_b._prim()),
         (True, self.condition_c._prim()),
     )
+
+
+def test_implicit_reopening(module):
+    self = module
+
+    class SubModule(Module):
+        def construct(self):
+            self.output = Output(UInt(8))
+            self.reg = Reg(UInt(8))
+
+            with reset:
+                self.reg[:] = 0
+
+            self.reg[:] = self.reg + 1
+
+    self.en = Input(Bool)
+    self.output = Output(UInt(8))
+
+    with when(self.en):
+        # The following line generates an implicit clock connection
+        self.counter = SubModule()
+        self.output[:] = self.counter.output
+    with otherwise:
+        self.output[:] = 0
+
+    assert self._module_data.assignments[0][2] == ()  # clk
+    assert self._module_data.assignments[1][2] == ()  # reset
+    assert self._module_data.assignments[2][2] == (
+        (True, self.en._prim()),
+    )
+    assert self._module_data.assignments[3][2] == (
+        (False, self.en._prim()),
+    )

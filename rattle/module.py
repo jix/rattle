@@ -2,14 +2,13 @@ import abc
 
 from . import context
 from .error import NoModuleUnderConstruction
-from .conditional import ConditionStack
 from .signal import Signal
 
 
 class ModuleData:
     def __init__(self, ctx, module):
         self.assignments = []
-        self.condition_stack = ConditionStack()
+        self.condition_stack = None
         self.implicit_bindings = {}
         self.submodules = []
         try:

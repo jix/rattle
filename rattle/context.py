@@ -18,11 +18,15 @@ class Context:
 
     @contextmanager
     def constructing_module(self, module):
+        from .conditional import ConditionStack
         old_module = self.__module
         self.__module = module
+        old_condition_stack = module._module_data.condition_stack
+        module._module_data.condition_stack = ConditionStack()
         try:
             yield
         finally:
+            module._module_data.condition_stack = old_condition_stack
             self.__module = old_module
 
 
