@@ -71,8 +71,12 @@ class PrimStorage(PrimSignal):
         self.direction = direction
 
     def __repr__(self):
-        return '<PrimStorage(%r, %r, %r, %r) at %x>' % (
-            self.module, self.direction, self.width, self.dimensions, id(self))
+        try:
+            return self._debug_name
+        except AttributeError:
+            return '<PrimStorage(%r, %r, %r, %r) at %x>' % (
+                self.module, self.direction, self.width, self.dimensions,
+                id(self))
 
     @property
     def allowed_readers(self):
@@ -161,9 +165,14 @@ class PrimIndex(PrimValue):
         return (self.index, self.x)
 
     def simplify(self):
-        # TODO Deeply nested tables
         if isinstance(self.x, PrimTable) and len(self.x.dimensions) == 1:
             return PrimMux(self.index, self.x.table)
+        elif isinstance(self.x, PrimIndex) and isinstance(self.x.x, PrimTable):
+            inner_index = self.x
+            inner_table = inner_index.x
+            new_table = PrimTable(
+                PrimIndex(self.index, entry) for entry in inner_table.table)
+            return PrimIndex(inner_index.index, new_table)
         else:
             return self
 

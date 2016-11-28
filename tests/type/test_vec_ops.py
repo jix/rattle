@@ -124,3 +124,15 @@ def test_vec_dynamic_indexing_const():
     assert str(v[Bits(3)['1xx']].value) == 'xxxxxxxx'
     assert str(v[Bits(3)['0xx']].value) == '100000xx'
     assert str(v[Bits(3)['xx0']].value) == '100x0xxx'
+
+
+def test_vec_dynamic_multi_indexing_const():
+    v = Vec(2, Vec(2, Bits(4)))[(
+        ('0000', '1111'),
+        ('1100', '1010')
+    )]
+
+    assert str(v[Bits['0']][Bits['0']].value) == '0000'
+    assert str(v[Bits['1']][Bits['0']].value) == '1100'
+    assert str(v[Bits['0']][Bits['1']].value) == '1111'
+    assert str(v[Bits['1']][Bits['1']].value) == '1010'
