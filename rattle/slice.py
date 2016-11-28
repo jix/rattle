@@ -1,4 +1,5 @@
 from .signal import Signal
+from .bitmath import log2up
 
 
 def check_slice(width, index):
@@ -12,7 +13,7 @@ def check_slice(width, index):
             raise IndexError('index out of bounds')
         return 'const_index', index
     elif isinstance(index, Signal):
-        index_width = (width - 1).bit_length()
+        index_width = log2up(width)
         index = Bits(index_width).convert(index, implicit=True)
         return 'dynamic_index', index
     elif isinstance(index, slice) and index.step is None:
