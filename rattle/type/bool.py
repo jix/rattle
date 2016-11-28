@@ -26,7 +26,12 @@ class BoolType(BasicType):
 
 
 Bool = BoolType()
-BoolType.__new__ = lambda cls: Bool
+
+
+def _raise(cls):
+    raise RuntimeError('use Bool instead of BoolType()')
+
+BoolType.__new__ = _raise
 
 
 class BoolSignal(Signal):

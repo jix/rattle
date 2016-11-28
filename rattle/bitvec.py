@@ -273,7 +273,12 @@ class XClass:
 
 
 X = XClass()
-XClass.__new__ = lambda cls: X
+
+
+def _raise(cls):
+    raise RuntimeError('use X instead of XClass()')
+
+XClass.__new__ = _raise
 
 
 def bv(value):

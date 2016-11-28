@@ -4,8 +4,8 @@ from .error import ImplicitNotFound
 from . import context
 
 
-class Implicit:
-    def __new__(cls, name):
+class ImplicitMeta(type):
+    def __call__(cls, name):
         cls._check_name(name)
         module = context.current().module
 
@@ -38,6 +38,8 @@ class Implicit:
         # TODO Should we ensure that this is read-only?
         return value
 
+
+class Implicit(metaclass=ImplicitMeta):
     @staticmethod
     @contextmanager
     def bind(name, value, *additional_binds):

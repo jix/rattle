@@ -14,10 +14,9 @@ class AllSet:
         return True
 
 
-class PrimSignal(metaclass=abc.ABCMeta):
-    def __new__(cls, *args, **kwds):
-        signal = super().__new__(cls)
-        signal.__init__(*args, **kwds)
+class PrimMeta(abc.ABCMeta):
+    def __call__(cls, *args, **kwds):
+        signal = super().__call__(*args, **kwds)
         # TODO Memoize
 
         if isinstance(signal, PrimConst):
@@ -36,6 +35,8 @@ class PrimSignal(metaclass=abc.ABCMeta):
 
         return signal.simplify()
 
+
+class PrimSignal(metaclass=PrimMeta):
     def __init__(self, width, dimensions=()):
         self.width = width
         self.dimensions = tuple(dimensions)
