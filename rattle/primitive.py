@@ -1,5 +1,6 @@
 import abc
 from .bitvec import BitVec, bv
+from .bitmath import log2up
 from .error import ValueNotAvailable
 
 
@@ -155,6 +156,7 @@ class PrimIndex(PrimValue):
     def __init__(self, index, x):
         index = index.simplify_read()
         assert index.dimensions == ()
+        assert index.width == log2up(x.dimensions[-1])
         super().__init__(
             width=x.width,
             dimensions=x.dimensions[:-1])
@@ -388,6 +390,7 @@ class PrimBitIndex(PrimValue):
     def __init__(self, index, x):
         index = index.simplify_read()
         assert index.dimensions == ()
+        assert index.width == log2up(x.width)
         assert x.dimensions == ()
 
         super().__init__(width=1)
@@ -418,6 +421,7 @@ class PrimMux(PrimValue):
         ports = tuple(ports)
         assert index.dimensions == ()
         assert len(ports) > 0
+        assert index.width == log2up(len(ports))
         assert all(port.dimensions == () for port in ports)
         assert all(port.width == ports[0].width for port in ports)
 

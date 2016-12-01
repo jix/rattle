@@ -2,6 +2,7 @@ from .type import *
 from ..signal import Signal
 from ..primitive import *
 from ..slice import dispatch_getitem
+from ..bitvec import BitVec
 
 
 class Vec(SignalType):
@@ -70,7 +71,8 @@ class VecSignal(Signal):
         return self
 
     def _getitem_const_index(self, index):
-        return self._getitem_prim(PrimConst(bv(index)))
+        index_width = log2up(len(self))
+        return self._getitem_prim(PrimConst(BitVec(index_width, index)))
 
     def _getitem_dynamic_index(self, index):
         return self._getitem_prim(index._prim())
