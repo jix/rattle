@@ -64,6 +64,33 @@ class PrimSignal(metaclass=PrimMeta):
     def allowed_writers(self):
         pass
 
+    def lower_assignment(self, condition, source):
+        for assignment in self.split_assignment(condition, source):
+            subtarget, subcondition, subsource = assignment
+
+            subtarget, subcondition = subtarget.lower_target(subcondition)
+            yield subtarget, subcondition, subsource
+
+    def split_assignment(self, condition, source):
+        source = source.simplify_read()
+        if self.dimensions:
+            index_width = log2up(self.dimensions[-1])
+            for i in range(self.dimensions[-1]):
+                index = PrimConst(BitVec(index_width, i))
+                yield from PrimIndex(index, self).split_assignment(
+                    condition, PrimIndex(index, source))
+        else:
+            yield from self.split_scalar(condition, source)
+
+    def split_scalar(self, condition, source):
+        yield self, condition, source
+
+    def lower_target(self, condition):
+        # pylint: disable=no-self-use
+        raise RuntimeError(
+            'assignment target could not be '
+            'translated into simple targets')
+
 
 class PrimStorage(PrimSignal):
     def __init__(self, module, direction, width, dimensions):
@@ -95,6 +122,9 @@ class PrimStorage(PrimSignal):
                 return frozenset()
         else:
             return frozenset([self.module])
+
+    def lower_target(self, condition):
+        return self, condition
 
 
 class PrimValue(PrimSignal, metaclass=abc.ABCMeta):
@@ -151,6 +181,10 @@ class PrimReg(PrimValue):
     def allowed_writers(self):
         return self.x.allowed_writers
 
+    def lower_target(self, condition):
+        # TODO handle reg conditions
+        return self.x, condition
+
 
 class PrimIndex(PrimValue):
     def __init__(self, index, x):
@@ -188,6 +222,10 @@ class PrimIndex(PrimValue):
     @property
     def allowed_writers(self):
         return self.x.allowed_writers & self.index.allowed_readers
+
+    def lower_target(self, condition):
+        x, condition = self.x.lower_target(condition)
+        return PrimIndex(self.index, x), condition
 
 
 class PrimNot(PrimValue):
@@ -365,6 +403,10 @@ class PrimSlice(PrimValue):
     def allowed_writers(self):
         return self.x.allowed_writers
 
+    def lower_target(self, condition):
+        x, condition = self.x.lower_target(condition)
+        return PrimSlice(self.start, self.width, x), condition
+
 
 class PrimRepeat(PrimValue):
     def __init__(self, count, x):
@@ -413,6 +455,14 @@ class PrimBitIndex(PrimValue):
     @property
     def allowed_writers(self):
         return self.index.allowed_readers & self.x.allowed_writers
+
+    def lower_target(self, condition):
+        # TODO Lower dynamic indexing of a slice into offset dynamic indexing
+        if isinstance(self.x, PrimSlice):
+            return super().lower_target(condition)
+        else:
+            x, condition = self.x.lower_target(condition)
+            return PrimBitIndex(self.index, x), condition
 
 
 class PrimMux(PrimValue):
@@ -465,6 +515,12 @@ class PrimMux(PrimValue):
         for port in self.ports:
             writers &= port.allowed_writers
         return writers
+
+    def split_scalar(self, condition, source):
+        for i, port in enumerate(self.ports):
+            index = PrimConst(BitVec(self.index.width, i))
+            select = PrimEq(self.index, index)
+            yield port, condition + ((True, select),), source
 
 
 class PrimTable(PrimValue):

@@ -37,8 +37,10 @@ class Signal(metaclass=abc.ABCMeta):
 
             priority, condition = condition_stack.current_conditions()
 
-            module._module_data.assignments.append(
-                (target, priority, condition, source))
+            for assignment in target.lower_assignment(condition, source):
+                subtarget, subcondition, subsource = assignment
+                module._module_data.assignments.append(
+                    (priority, subtarget, subcondition, subsource))
 
     def _access(self, write=False):
         module = context.current().module
