@@ -278,6 +278,7 @@ X = XClass()
 def _raise(cls):
     raise RuntimeError('use X instead of XClass()')
 
+
 XClass.__new__ = _raise
 
 

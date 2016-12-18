@@ -31,6 +31,7 @@ Bool = BoolType()
 def _raise(cls):
     raise RuntimeError('use Bool instead of BoolType()')
 
+
 BoolType.__new__ = _raise
 
 

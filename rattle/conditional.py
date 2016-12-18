@@ -64,11 +64,13 @@ class OtherwiseContext:
     def __exit__(self, *exc):
         context.current().module._module_data.condition_stack.exit()
 
+
 otherwise = OtherwiseContext()
 
 
 class ResetCondition:
     pass
+
 
 reset_condition = ResetCondition()
 
@@ -80,5 +82,6 @@ class ResetContext:
 
     def __exit__(self, *exc):
         context.current().module._module_data.condition_stack.exit()
+
 
 reset = ResetContext()
