@@ -25,7 +25,7 @@ class Signal(metaclass=abc.ABCMeta):
 
     def assign(self, value):
         module = context.current().module
-        condition_stack = module._module_data.condition_stack
+        condition = module._module_data.condition_stack.current_conditions()
         value = self.signal_type.convert(value, implicit=True)
         self._access(write=True)
         value._access(write=False)
@@ -35,12 +35,10 @@ class Signal(metaclass=abc.ABCMeta):
             if flip:
                 target, source = source, target
 
-            priority, condition = condition_stack.current_conditions()
+            lowered_assignments = target.lower_assignment(condition, source)
 
-            for assignment in target.lower_assignment(condition, source):
-                subtarget, subcondition, subsource = assignment
-                module._module_data.assignments.append(
-                    (priority, subtarget, subcondition, subsource))
+            for assignment in lowered_assignments:
+                module._module_data.assignments.append(assignment)
 
     def _access(self, write=False):
         module = context.current().module

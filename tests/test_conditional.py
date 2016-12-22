@@ -121,9 +121,6 @@ def test_implicit_reopening(module):
             self.output = Output(UInt(8))
             self.reg = Reg(UInt(8))
 
-            with reset:
-                self.reg[:] = 0
-
             self.reg[:] = self.reg + 1
 
     self.en = Input(Bool)

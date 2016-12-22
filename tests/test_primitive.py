@@ -44,10 +44,10 @@ def test_lower_vector_to_scalars():
 
     lowered = list(a.lower_assignment(((True, c),), b))
     assert lowered == [
-        (PrimIndex(index(0), a), ((True, c),), PrimIndex(index(0), b)),
-        (PrimIndex(index(1), a), ((True, c),), PrimIndex(index(1), b)),
-        (PrimIndex(index(2), a), ((True, c),), PrimIndex(index(2), b)),
-        (PrimIndex(index(3), a), ((True, c),), PrimIndex(index(3), b)),
+        (a, PrimIndex(index(0), a), ((True, c),), PrimIndex(index(0), b)),
+        (a, PrimIndex(index(1), a), ((True, c),), PrimIndex(index(1), b)),
+        (a, PrimIndex(index(2), a), ((True, c),), PrimIndex(index(2), b)),
+        (a, PrimIndex(index(3), a), ((True, c),), PrimIndex(index(3), b)),
     ]
 
 
@@ -57,6 +57,6 @@ def test_lower_mux_target_to_conditional_assigns():
     lowered = list(PrimMux(a, [b, c]).lower_assignment(((True, e),), d))
 
     assert lowered == [
-        (b, ((True, e), (True, PrimEq(a, PrimConst(bv('0'))))), d),
-        (c, ((True, e), (True, PrimEq(a, PrimConst(bv('1'))))), d),
+        (b, b, ((True, e), (True, PrimEq(a, PrimConst(bv('0'))))), d),
+        (c, c, ((True, e), (True, PrimEq(a, PrimConst(bv('1'))))), d),
     ]

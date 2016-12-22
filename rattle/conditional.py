@@ -8,28 +8,35 @@ from .bitvec import bv
 class ConditionStack:
     def __init__(self):
         self._stack = [[]]
-        # TODO Priority is only semi-related to conditions, move it elsewhere?
-        self._priority_stack = [0]
 
     def new(self):
         self._stack[-1] = []
 
-    def enter(self, condition, priority=None):
-        if not isinstance(condition, ResetCondition):
-            condition = Bool.convert(condition, implicit=True)
-            condition._access()
-            condition = condition._prim()
+    def enter(self, condition):
+        if self.is_reset():
+            raise RuntimeError(
+                'conditions cannot be used inside a reset block')
+        condition = Bool.convert(condition, implicit=True)
+        condition._access()
+        condition = condition._prim()
         self._stack[-1].append(condition)
         self._stack.append([])
-        if priority is None:
-            priority = self._priority_stack[-1]
-        self._priority_stack.append(priority)
+
+    def enter_reset(self):
+        if len(self._stack) > 1:
+            # TODO Specific exception
+            raise RuntimeError('reset cannot be nested in conditions')
+        self._stack.append('reset')
+
+    def is_reset(self):
+        return self._stack[-1] == 'reset'
 
     def exit(self):
         self._stack.pop()
-        self._priority_stack.pop()
 
     def current_conditions(self):
+        if self.is_reset():
+            return ()
         conditions = []
         for level in self._stack[:-1]:
             if level:
@@ -37,7 +44,7 @@ class ConditionStack:
                 pos = level[-1]
                 if pos != PrimConst(bv('1')):
                     conditions.append((True, pos))
-        return self._priority_stack[-1], tuple(conditions)
+        return tuple(conditions)
 
 
 @contextmanager
@@ -68,17 +75,9 @@ class OtherwiseContext:
 otherwise = OtherwiseContext()
 
 
-class ResetCondition:
-    pass
-
-
-reset_condition = ResetCondition()
-
-
 class ResetContext:
     def __enter__(self):
-        context.current().module._module_data.condition_stack.enter(
-            reset_condition, priority=1)
+        context.current().module._module_data.condition_stack.enter_reset()
 
     def __exit__(self, *exc):
         context.current().module._module_data.condition_stack.exit()

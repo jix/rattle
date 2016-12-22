@@ -68,8 +68,8 @@ class PrimSignal(metaclass=PrimMeta):
         for assignment in self.split_assignment(condition, source):
             subtarget, subcondition, subsource = assignment
 
-            subtarget, subcondition = subtarget.lower_target(subcondition)
-            yield subtarget, subcondition, subsource
+            subtarget, storage = subtarget.lower_target()
+            yield storage, subtarget, subcondition, subsource
 
     def split_assignment(self, condition, source):
         source = source.simplify_read()
@@ -85,7 +85,7 @@ class PrimSignal(metaclass=PrimMeta):
     def split_scalar(self, condition, source):
         yield self, condition, source
 
-    def lower_target(self, condition):
+    def lower_target(self):
         # pylint: disable=no-self-use
         raise RuntimeError(
             'assignment target could not be '
@@ -123,8 +123,8 @@ class PrimStorage(PrimSignal):
         else:
             return frozenset([self.module])
 
-    def lower_target(self, condition):
-        return self, condition
+    def lower_target(self):
+        return self, self
 
 
 class PrimValue(PrimSignal, metaclass=abc.ABCMeta):
@@ -181,9 +181,8 @@ class PrimReg(PrimValue):
     def allowed_writers(self):
         return self.x.allowed_writers
 
-    def lower_target(self, condition):
-        # TODO handle reg conditions
-        return self.x, condition
+    def lower_target(self):
+        return self.x, self
 
 
 class PrimIndex(PrimValue):
@@ -223,9 +222,9 @@ class PrimIndex(PrimValue):
     def allowed_writers(self):
         return self.x.allowed_writers & self.index.allowed_readers
 
-    def lower_target(self, condition):
-        x, condition = self.x.lower_target(condition)
-        return PrimIndex(self.index, x), condition
+    def lower_target(self):
+        x, storage = self.x.lower_target()
+        return PrimIndex(self.index, x), storage
 
 
 class PrimNot(PrimValue):
@@ -403,9 +402,9 @@ class PrimSlice(PrimValue):
     def allowed_writers(self):
         return self.x.allowed_writers
 
-    def lower_target(self, condition):
-        x, condition = self.x.lower_target(condition)
-        return PrimSlice(self.start, self.width, x), condition
+    def lower_target(self):
+        x, storage = self.x.lower_target()
+        return PrimSlice(self.start, self.width, x), storage
 
 
 class PrimRepeat(PrimValue):
@@ -456,13 +455,13 @@ class PrimBitIndex(PrimValue):
     def allowed_writers(self):
         return self.index.allowed_readers & self.x.allowed_writers
 
-    def lower_target(self, condition):
+    def lower_target(self):
         # TODO Lower dynamic indexing of a slice into offset dynamic indexing
         if isinstance(self.x, PrimSlice):
-            return super().lower_target(condition)
+            return super().lower_target()
         else:
-            x, condition = self.x.lower_target(condition)
-            return PrimBitIndex(self.index, x), condition
+            x, storage = self.x.lower_target()
+            return PrimBitIndex(self.index, x), storage
 
 
 class PrimMux(PrimValue):
