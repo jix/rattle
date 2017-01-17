@@ -64,6 +64,20 @@ class PrimSignal(metaclass=PrimMeta):
     def allowed_writers(self):
         pass
 
+    def lower_and_add_to_circuit(self, condition, source, circuit, reset):
+        lowered_assignments = self.lower_assignment(condition, source)
+
+        for assignment in lowered_assignments:
+            storage, target, condition, source = assignment
+            if reset:
+                if condition != ():
+                    # TODO Change exception type
+                    raise RuntimeError(
+                        "Assignment targets must be static for resets")
+                storage.add_reset_to_circuit(circuit, target, source)
+            else:
+                storage.add_to_circuit(circuit, target, condition, source)
+
     def lower_assignment(self, condition, source):
         for assignment in self.split_assignment(condition, source):
             subtarget, subcondition, subsource = assignment
@@ -90,6 +104,15 @@ class PrimSignal(metaclass=PrimMeta):
         raise RuntimeError(
             'assignment target could not be '
             'translated into simple targets')
+
+    def add_to_circuit(self, circuit, target, condition, source):
+        raise RuntimeError(
+            'primitive signal %r is not a valid storage node' % self)
+
+    def add_reset_to_circuit(self, circuit, target, source):
+        # TODO This is not just an internal error, make nice
+        raise RuntimeError(
+            'primitive signal %r is not a valid storage node for reset' % self)
 
 
 class PrimStorage(PrimSignal):
@@ -125,6 +148,9 @@ class PrimStorage(PrimSignal):
 
     def lower_target(self):
         return self, self
+
+    def add_to_circuit(self, circuit, target, condition, source):
+        circuit.add_combinational(self, target, condition, source)
 
 
 class PrimValue(PrimSignal, metaclass=abc.ABCMeta):
@@ -183,6 +209,20 @@ class PrimReg(PrimValue):
 
     def lower_target(self):
         return self.x, self
+
+    def add_to_circuit(self, circuit, target, condition, source):
+        if self.en is not None:
+            condition += ((True, self.en),)
+        circuit.add_clocked(self.clk, target, condition, source)
+
+    def add_reset_to_circuit(self, circuit, target, source):
+        if self.reset_mode in ('async+init', 'async'):
+            circuit.add_async_reset(self, self.reset, target, source)
+        elif self.reset_mode in ('sync+init', 'sync'):
+            circuit.add_sync_reset(self.clk, self.reset, target, source)
+        if self.reset_mode in ('init', 'sync+init', 'async+init'):
+            circuit.add_initial(self, target, source)
+        # TODO Should we error if no reset is emitted?
 
 
 class PrimIndex(PrimValue):

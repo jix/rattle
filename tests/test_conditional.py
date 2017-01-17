@@ -4,8 +4,20 @@ from rattle.type import *
 from rattle.conditional import *
 
 
+class MockCircuit:
+    def __init__(self):
+        self.conditions = []
+
+    def add_combinational(self, storage, target, condition, source):
+        self.conditions.append(condition)
+
+    def add_clocked(self, clock, target, condition, source):
+        self.conditions.append(condition)
+
+
 def test_single_when(module):
     self = module
+    self._module_data.circuit = circuit = MockCircuit()
     self.reg = Reg(Bits(10))
     self.condition = Input(Bool)
     self.reg2 = Reg(Bool)
@@ -15,13 +27,14 @@ def test_single_when(module):
 
     self.reg2[:] = self.condition
 
-    assert self._module_data.assignments[0][2] == (
+    assert circuit.conditions[0] == (
         (True, self.condition._prim()),)
-    assert self._module_data.assignments[1][2] == ()
+    assert circuit.conditions[1] == ()
 
 
 def test_when_otherwise(module):
     self = module
+    self._module_data.circuit = circuit = MockCircuit()
     self.reg = Reg(Bits(10))
     self.condition = Input(Bool)
 
@@ -30,14 +43,15 @@ def test_when_otherwise(module):
     with otherwise:
         self.reg[:] = self.reg ^ Bits['1100110011']
 
-    assert self._module_data.assignments[0][2] == (
+    assert circuit.conditions[0] == (
         (True, self.condition._prim()),)
-    assert self._module_data.assignments[1][2] == (
+    assert circuit.conditions[1] == (
         (False, self.condition._prim()),)
 
 
 def test_when_elwhen(module):
     self = module
+    self._module_data.circuit = circuit = MockCircuit()
     self.reg = Reg(Bits(10))
     self.condition_a = Input(Bool)
     self.condition_b = Input(Bool)
@@ -47,10 +61,10 @@ def test_when_elwhen(module):
     with elwhen(self.condition_b):
         self.reg[:] = self.reg ^ Bits['0101010101']
 
-    assert self._module_data.assignments[0][2] == (
+    assert circuit.conditions[0] == (
         (True, self.condition_a._prim()),
     )
-    assert self._module_data.assignments[1][2] == (
+    assert circuit.conditions[1] == (
         (False, self.condition_a._prim()),
         (True, self.condition_b._prim()),
     )
@@ -58,6 +72,7 @@ def test_when_elwhen(module):
 
 def test_when_elwhen_otherwise(module):
     self = module
+    self._module_data.circuit = circuit = MockCircuit()
     self.reg = Reg(Bits(10))
     self.condition_a = Input(Bool)
     self.condition_b = Input(Bool)
@@ -69,14 +84,14 @@ def test_when_elwhen_otherwise(module):
     with otherwise:
         self.reg[:] = self.reg ^ Bits['1100110011']
 
-    assert self._module_data.assignments[0][2] == (
+    assert circuit.conditions[0] == (
         (True, self.condition_a._prim()),
     )
-    assert self._module_data.assignments[1][2] == (
+    assert circuit.conditions[1] == (
         (False, self.condition_a._prim()),
         (True, self.condition_b._prim()),
     )
-    assert self._module_data.assignments[2][2] == (
+    assert circuit.conditions[2] == (
         (False, self.condition_a._prim()),
         (False, self.condition_b._prim()),
     )
@@ -84,6 +99,7 @@ def test_when_elwhen_otherwise(module):
 
 def test_nested_when(module):
     self = module
+    self._module_data.circuit = circuit = MockCircuit()
     self.reg = Reg(Bits(10))
     self.condition_a = Input(Bool)
     self.condition_b = Input(Bool)
@@ -98,15 +114,15 @@ def test_nested_when(module):
         with elwhen(self.condition_c):
             self.reg[:] = self.reg ^ Bits['1100110011']
 
-    assert self._module_data.assignments[0][2] == (
+    assert circuit.conditions[0] == (
         (True, self.condition_a._prim()),
         (True, self.condition_b._prim()),
     )
-    assert self._module_data.assignments[1][2] == (
+    assert circuit.conditions[1] == (
         (False, self.condition_a._prim()),
         (True, self.condition_b._prim()),
     )
-    assert self._module_data.assignments[2][2] == (
+    assert circuit.conditions[2] == (
         (False, self.condition_a._prim()),
         (False, self.condition_b._prim()),
         (True, self.condition_c._prim()),
@@ -115,6 +131,7 @@ def test_nested_when(module):
 
 def test_implicit_reopening(module):
     self = module
+    self._module_data.circuit = circuit = MockCircuit()
 
     class SubModule(Module):
         def construct(self):
@@ -133,11 +150,11 @@ def test_implicit_reopening(module):
     with otherwise:
         self.output[:] = 0
 
-    assert self._module_data.assignments[0][2] == ()  # clk
-    assert self._module_data.assignments[1][2] == ()  # reset
-    assert self._module_data.assignments[2][2] == (
+    assert circuit.conditions[0] == ()  # clk
+    assert circuit.conditions[1] == ()  # reset
+    assert circuit.conditions[2] == (
         (True, self.en._prim()),
     )
-    assert self._module_data.assignments[3][2] == (
+    assert circuit.conditions[3] == (
         (False, self.en._prim()),
     )
