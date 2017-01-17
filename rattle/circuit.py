@@ -49,5 +49,19 @@ class Block:
         self.assignments = []
 
     def add_assignment(self, target, condition, source):
-        # TODO Recover / optimize nesting
-        self.assignments.append((target, condition, source))
+        position = self.assignments
+        new_condition = ()
+
+        for i, test in enumerate(condition):
+            if position and position[-1][:2] == ('?', test[1]):
+                position = position[-1][3 - test[0]]
+            else:
+                new_condition = condition[i:]
+                break
+
+        for test in new_condition:
+            if_node = ('?', test[1], [], [])
+            position.append(if_node)
+            position = if_node[3 - test[0]]
+
+        position.append(('=', target, source))
