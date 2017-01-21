@@ -120,6 +120,7 @@ class PrimStorage(PrimSignal):
         super().__init__(width=width, dimensions=dimensions)
         self.module = module
         self.direction = direction
+        self.signal = None
 
     def __repr__(self):
         try:

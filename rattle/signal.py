@@ -114,16 +114,30 @@ def _make_storage(signal_type, direction=None, wrap_prims=lambda x: x):
 
     flipped = _flip_dir.get(direction)
 
+    storage = []
+
     for key in sorted(shape.keys()):
         flip, width, *dimensions = shape[key]
 
-        prims[key] = wrap_prims(PrimStorage(
+        prim = PrimStorage(
             module=module,
             width=width,
             dimensions=dimensions,
-            direction=flipped if flip else direction))
+            direction=flipped if flip else direction)
 
-    return signal_type._signal_class(signal_type, prims, storage=True)
+        if direction is not None:
+            module._module_data.io_prims.append(prim)
+
+        storage.append(prim)
+
+        prims[key] = wrap_prims(prim)
+
+    signal = signal_type._signal_class(signal_type, prims, storage=True)
+
+    for prim in storage:
+        prim.signal = signal
+
+    return signal
 
 
 def Wire(signal_type):

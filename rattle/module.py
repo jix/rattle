@@ -4,6 +4,7 @@ from . import context
 from .error import NoModuleUnderConstruction
 from .signal import Signal
 from .circuit import Circuit
+from .names import Names
 
 
 class ModuleData:
@@ -11,7 +12,9 @@ class ModuleData:
         self.condition_stack = None
         self.implicit_bindings = {}
         self.submodules = []
+        self.io_prims = []
         self.circuit = Circuit()
+        self.names = Names()
         try:
             self.parent = ctx.module
         except NoModuleUnderConstruction:
@@ -43,9 +46,8 @@ class Module(metaclass=abc.ABCMeta):
 
     def __setattr__(self, name, value):
         if isinstance(value, Signal):
-            # TODO Automatic naming
-            pass
+            self._module_data.names.name_signal(value, name)
         elif isinstance(value, Module):
-            # TODO Automatic naming
-            pass
+            if value.parent == self:
+                self._module_data.names.name_submodule(value, name)
         return super().__setattr__(name, value)

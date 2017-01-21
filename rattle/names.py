@@ -1,0 +1,92 @@
+from itertools import count
+from .primitive import PrimStorage
+
+
+class Names:
+    def __init__(self):
+        self.used_names = set()
+        self.prim_to_name = {}
+        self.module_to_name = {}
+
+    def name_signal(self, signal, name=None):
+        all_named = True
+        for prim in signal._prims.values():
+            # TODO has simplify_read always the semantics we want here?
+            prim = prim.simplify_read()
+            if prim not in self.prim_to_name:
+                all_named = False
+                break
+        if all_named:
+            return
+
+        # TODO better alt names?
+        prefix = self._make_unique(name)
+
+        for key in sorted(signal._prims.keys()):
+            prim_name = prefix + ''.join('_%s' % part for part in key)
+            self.name_prim(
+                signal._prim(key), prim_name, check_signal=False)
+
+        # Intentionally added late to not block the name for a prim with key ()
+        self.used_names.add(prefix)
+
+    def name_submodule(self, module, name=None):
+        try:
+            return self.module_to_name[module]
+        except KeyError:
+            pass
+        # TODO better alt names
+        name = self._make_unique(name)
+        self.used_names.add(name)
+        self.module_to_name[module] = name
+
+        subnames = module._module_data.names
+
+        for prim in module._module_data.io_prims:
+            self.name_prim(prim, '%s_%s' % (name, subnames.name_prim(prim)))
+
+    def name_prim(self, prim, name=None, check_signal=True):
+        # TODO has simplify_read always the semantics we want here?
+        prim = prim.simplify_read()
+        try:
+            return self.prim_to_name[prim]
+        except KeyError:
+            pass
+
+        if check_signal and isinstance(prim, PrimStorage) and prim.signal:
+            # TODO will name ever be not None here?
+            self.name_signal(prim.signal, name)
+            return self.name_prim(prim, name, check_signal=False)
+
+        # TODO better alt names?
+        vec_suffixes = tuple(self._make_vec_suffixes(prim.dimensions))
+        name = self._make_unique(name, suffixes=vec_suffixes)
+        self.used_names.update(name + suffix for suffix in vec_suffixes)
+        self.prim_to_name[prim] = name
+
+        return name
+
+    def _make_unique(self, name, alt_name='unk', suffixes=('',)):
+        if name is None:
+            name = alt_name
+        # TODO sanitize name
+        if self._is_unique(name, suffixes):
+            return name
+        for i in count(1):
+            attempt = '%s_%i' % (name, i)
+            if self._is_unique(attempt, suffixes):
+                return attempt
+
+    def _is_unique(self, name, suffixes):
+        return all(
+            name + suffix not in self.used_names
+            for suffix in suffixes)
+
+    @classmethod
+    def _make_vec_suffixes(cls, dimensions):
+        if dimensions == ():
+            yield ''
+        else:
+            for inner_suffix in cls._make_vec_suffixes(dimensions[1:]):
+                for i in range(dimensions[0]):
+                    yield '%s_%i' % (inner_suffix, i)
