@@ -1,10 +1,13 @@
+from collections import OrderedDict
+
+
 class Circuit:
     def __init__(self):
-        self.combinational = {}
-        self.clocked = {}
-        self.async_reset = {}
-        self.sync_reset = {}
-        self.initial = {}
+        self.combinational = OrderedDict()
+        self.clocked = OrderedDict()
+        self.async_reset = OrderedDict()
+        self.sync_reset = OrderedDict()
+        self.initial = OrderedDict()
 
     def add_combinational(self, storage, target, condition, source):
         try:
@@ -21,7 +24,7 @@ class Circuit:
         block.add_assignment(target, condition, source)
 
     def add_sync_reset(self, clock, reset, target, source):
-        by_clock = self.sync_reset.setdefault(clock, {})
+        by_clock = self.sync_reset.setdefault(clock, OrderedDict())
         try:
             block = by_clock[reset]
         except KeyError:
@@ -29,7 +32,7 @@ class Circuit:
         block.add_assignment(target, (), source)
 
     def add_async_reset(self, storage, reset, target, source):
-        by_storage = self.async_reset.setdefault(storage, {})
+        by_storage = self.async_reset.setdefault(storage, OrderedDict())
         try:
             block = by_storage[reset]
         except KeyError:
