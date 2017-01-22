@@ -126,9 +126,13 @@ class PrimStorage(PrimSignal):
         try:
             return self._debug_name
         except AttributeError:
-            return '<PrimStorage(%r, %r, %r, %r) at %x>' % (
-                self.module, self.direction, self.width, self.dimensions,
-                id(self))
+            try:
+                # TODO Confusing for submodule IO ports
+                return self.module._module_data.names.prim_to_name[self]
+            except KeyError:
+                return '<PrimStorage(%r, %r, %r, %r) at %x>' % (
+                    self.module, self.direction, self.width, self.dimensions,
+                    id(self))
 
     @property
     def allowed_readers(self):

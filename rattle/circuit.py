@@ -46,6 +46,30 @@ class Circuit:
             block = self.initial[storage] = Block()
         block.add_assignment(target, (), source)
 
+    def __repr__(self):
+        lines = []
+        lines.append('Circuit %s' % hex(id(self)))
+        for storage, block in self.combinational.items():
+            lines.append('combinational for %r:' % storage)
+            lines.extend(block._repr_lines(indent='  '))
+        for clock, block in self.clocked.items():
+            lines.append('clocked for %r:' % clock)
+            lines.extend(block._repr_lines(indent='  '))
+        for clock, resets in self.sync_reset.items():
+            lines.append('sync reset for clock %r:' % clock)
+            for reset, block in resets.items():
+                lines.append('  reset %r:' % reset)
+                lines.extend(block._repr_lines(indent='    '))
+        for storage, resets in self.async_reset.items():
+            lines.append('async reset for %r:' % storage)
+            for reset, block in resets.items():
+                lines.append('  reset %r:' % reset)
+                lines.extend(block._repr_lines(indent='    '))
+        for storage, block in self.async_reset.items():
+            lines.append('initial for %r:' % storage)
+            lines.extend(block._repr_lines(indent='    '))
+        return '\n'.join(lines)
+
 
 class Block:
     def __init__(self):
@@ -68,3 +92,29 @@ class Block:
             position = if_node[3 - test[0]]
 
         position.append(('=', target, source))
+
+    def __repr__(self):
+        return '\n'.join(self._repr_lines())
+
+    def _repr_lines(self, indent=''):
+        lines = []
+
+        def recurse(assignments, indent):
+            if not assignments:
+                lines.append('%spass' % indent)
+                return
+            for statement in assignments:
+                if statement[0] == '=':
+                    lines.append('%s%r := %r' % (
+                        indent, statement[1], statement[2]))
+                elif statement[0] == '?':
+                    lines.append('%swhen %r:' % (
+                        indent, statement[1]))
+                    recurse(statement[2], indent + '  ')
+                    lines.append('%selse:' % indent)
+                    recurse(statement[3], indent + '  ')
+                else:
+                    assert False
+
+        recurse(self.assignments, indent)
+        return lines
