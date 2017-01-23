@@ -11,7 +11,7 @@ class MockCircuit:
     def add_combinational(self, storage, target, condition, source):
         self.conditions.append(condition)
 
-    def add_clocked(self, clock, target, condition, source):
+    def add_clocked(self, storage, clock, target, condition, source):
         self.conditions.append(condition)
 
 

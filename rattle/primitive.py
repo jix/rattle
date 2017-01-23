@@ -218,13 +218,13 @@ class PrimReg(PrimValue):
     def add_to_circuit(self, circuit, target, condition, source):
         if self.en is not None:
             condition += ((True, self.en),)
-        circuit.add_clocked(self.clk, target, condition, source)
+        circuit.add_clocked(self, self.clk, target, condition, source)
 
     def add_reset_to_circuit(self, circuit, target, source):
         if self.reset_mode in ('async+init', 'async'):
-            circuit.add_async_reset(self, self.reset, target, source)
+            circuit.add_async_reset(self, self.clk, self.reset, target, source)
         elif self.reset_mode in ('sync+init', 'sync'):
-            circuit.add_sync_reset(self.clk, self.reset, target, source)
+            circuit.add_sync_reset(self, self.clk, self.reset, target, source)
         if self.reset_mode in ('init', 'sync+init', 'async+init'):
             circuit.add_initial(self, target, source)
         # TODO Should we error if no reset is emitted?

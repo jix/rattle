@@ -17,37 +17,35 @@ class Circuit:
             block = self.combinational[storage]
         except KeyError:
             block = self.combinational[storage] = Block()
-        block.add_assignment(target, condition, source)
+        block.add_assignment(storage, target, condition, source)
 
-    def add_clocked(self, clock, target, condition, source):
+    def add_clocked(self, storage, clock, target, condition, source):
         try:
             block = self.clocked[clock]
         except KeyError:
             block = self.clocked[clock] = Block()
-        block.add_assignment(target, condition, source)
+        block.add_assignment(storage, target, condition, source)
 
-    def add_sync_reset(self, clock, reset, target, source):
-        by_clock = self.sync_reset.setdefault(clock, OrderedDict())
+    def add_sync_reset(self, storage, clock, reset, target, source):
         try:
-            block = by_clock[reset]
+            block = self.sync_reset[clock]
         except KeyError:
-            block = by_clock[reset] = Block()
-        block.add_assignment(target, (), source)
+            block = self.sync_reset[clock] = Block()
+        block.add_assignment(storage, target, ((True, reset),), source)
 
-    def add_async_reset(self, storage, reset, target, source):
-        by_storage = self.async_reset.setdefault(storage, OrderedDict())
+    def add_async_reset(self, storage, clock, reset, target, source):
         try:
-            block = by_storage[reset]
+            block = self.async_reset[(clock, reset)]
         except KeyError:
-            block = by_storage[reset] = Block()
-        block.add_assignment(target, (), source)
+            block = self.async_reset[(clock, reset)] = Block()
+        block.add_assignment(storage, target, (), source)
 
     def add_initial(self, storage, target, source):
         try:
             block = self.initial[storage]
         except KeyError:
             block = self.initial[storage] = Block()
-        block.add_assignment(target, (), source)
+        block.add_assignment(storage, target, (), source)
 
     def finalize(self):
         if self.finalized:
@@ -56,14 +54,13 @@ class Circuit:
         self.finalized = True
 
     def _finalize_sync_resets(self):
-        for clock, resets in self.sync_reset.items():
+        for clock, reset_block in self.sync_reset.items():
             try:
                 block = self.clocked[clock]
             except KeyError:
                 block = self.clocked[clock] = Block()
-            for reset, reset_block in resets.items():
-                block.assignments.append(
-                    ('?', reset, reset_block.assignments, []))
+            block.assignments.extend(reset_block.assignments)
+            block.storage.update(reset_block.storage)
 
         self.sync_reset = OrderedDict()
 
@@ -76,16 +73,12 @@ class Circuit:
         for clock, block in self.clocked.items():
             lines.append('clocked for %r:' % clock)
             lines.extend(block._repr_lines(indent='  '))
-        for clock, resets in self.sync_reset.items():
+        for clock, block in self.sync_reset.items():
             lines.append('sync reset for clock %r:' % clock)
-            for reset, block in resets.items():
-                lines.append('  reset %r:' % reset)
-                lines.extend(block._repr_lines(indent='    '))
-        for storage, resets in self.async_reset.items():
-            lines.append('async reset for %r:' % storage)
-            for reset, block in resets.items():
-                lines.append('  reset %r:' % reset)
-                lines.extend(block._repr_lines(indent='    '))
+            lines.extend(block._repr_lines(indent='  '))
+        for (clock, reset), block in self.async_reset.items():
+            lines.append('async reset %r for clock %r:' % (reset, clock))
+            lines.extend(block._repr_lines(indent='  '))
         for storage, block in self.async_reset.items():
             lines.append('initial for %r:' % storage)
             lines.extend(block._repr_lines(indent='    '))
@@ -95,8 +88,9 @@ class Circuit:
 class Block:
     def __init__(self):
         self.assignments = []
+        self.storage = set()
 
-    def add_assignment(self, target, condition, source):
+    def add_assignment(self, storage, target, condition, source):
         position = self.assignments
         new_condition = ()
 
@@ -112,7 +106,8 @@ class Block:
             position.append(if_node)
             position = if_node[3 - test[0]]
 
-        position.append(('=', target, source))
+        position.append(('=', storage, target, source))
+        self.storage.add(storage)
 
     def __repr__(self):
         return '\n'.join(self._repr_lines())
@@ -127,7 +122,7 @@ class Block:
             for statement in assignments:
                 if statement[0] == '=':
                     lines.append('%s%r := %r' % (
-                        indent, statement[1], statement[2]))
+                        indent, statement[2], statement[3]))
                 elif statement[0] == '?':
                     lines.append('%swhen %r:' % (
                         indent, statement[1]))
