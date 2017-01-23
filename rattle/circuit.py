@@ -9,6 +9,9 @@ class Circuit:
         self.sync_reset = OrderedDict()
         self.initial = OrderedDict()
 
+        self.finalized = False
+        # TODO forbid modification after finalizing
+
     def add_combinational(self, storage, target, condition, source):
         try:
             block = self.combinational[storage]
@@ -45,6 +48,24 @@ class Circuit:
         except KeyError:
             block = self.initial[storage] = Block()
         block.add_assignment(target, (), source)
+
+    def finalize(self):
+        if self.finalized:
+            return
+        self._finalize_sync_resets()
+        self.finalized = True
+
+    def _finalize_sync_resets(self):
+        for clock, resets in self.sync_reset.items():
+            try:
+                block = self.clocked[clock]
+            except KeyError:
+                block = self.clocked[clock] = Block()
+            for reset, reset_block in resets.items():
+                block.assignments.append(
+                    ('?', reset, reset_block.assignments, []))
+
+        self.sync_reset = OrderedDict()
 
     def __repr__(self):
         lines = []

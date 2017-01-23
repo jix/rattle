@@ -1,4 +1,7 @@
 from rattle.circuit import *
+from rattle.signal import *
+from rattle.type import *
+from rattle.conditional import *
 
 
 def test_block_recover_nesting():
@@ -52,3 +55,20 @@ def test_block_recover_nesting():
         block.add_assignment(*assignment)
 
     assert block.assignments == nested
+
+
+def test_sync_reset_finalization(module):
+    self = module
+
+    self.test = Reg(Bool)
+
+    with reset:
+        self.test[:] = False
+
+    self.test[:] = ~self.test
+
+    self._module_data.circuit.finalize()
+
+    assert not self._module_data.circuit.sync_reset
+    clocked_block = self._module_data.circuit.clocked.popitem()[1]
+    assert clocked_block.assignments[-1][0] == '?'
