@@ -4,10 +4,13 @@ from collections import OrderedDict
 class Circuit:
     def __init__(self):
         self.combinational = OrderedDict()
+        self.assign = OrderedDict()
         self.clocked = OrderedDict()
         self.async_reset = OrderedDict()
         self.sync_reset = OrderedDict()
         self.initial = OrderedDict()
+
+        self.clocked_storage = {}
 
         self.finalized = False
         # TODO forbid modification after finalizing
@@ -25,6 +28,7 @@ class Circuit:
         except KeyError:
             block = self.clocked[clock] = Block()
         block.add_assignment(storage, target, condition, source)
+        self.clocked_storage.setdefault(storage, set()).add(clock)
 
     def add_sync_reset(self, storage, clock, reset, target, source):
         try:
@@ -32,6 +36,7 @@ class Circuit:
         except KeyError:
             block = self.sync_reset[clock] = Block()
         block.add_assignment(storage, target, ((True, reset),), source)
+        self.clocked_storage.setdefault(storage, set()).add(clock)
 
     def add_async_reset(self, storage, clock, reset, target, source):
         try:
@@ -39,6 +44,7 @@ class Circuit:
         except KeyError:
             block = self.async_reset[(clock, reset)] = Block()
         block.add_assignment(storage, target, (), source)
+        self.clocked_storage.setdefault(storage, set()).add(clock)
 
     def add_initial(self, storage, target, source):
         try:
@@ -51,6 +57,7 @@ class Circuit:
         if self.finalized:
             return
         self._finalize_sync_resets()
+        self._find_assign_in_combinational()
         self.finalized = True
 
     def _finalize_sync_resets(self):
@@ -63,6 +70,22 @@ class Circuit:
             block.storage.update(reset_block.storage)
 
         self.sync_reset = OrderedDict()
+
+    def _find_assign_in_combinational(self):
+        # TODO expand this to work on vector storage
+        for storage in list(self.combinational.keys()):
+            if storage in self.clocked_storage or storage in self.initial:
+                continue
+            block = self.combinational[storage]
+            if len(block.assignments) != 1:
+                continue
+            assignment = block.assignments[0]
+            if assignment[0] != '=':
+                continue
+            if assignment[2] != storage:
+                continue
+            del self.combinational[storage]
+            self.assign.setdefault(storage, []).append(assignment[2:])
 
     def __repr__(self):
         lines = []
