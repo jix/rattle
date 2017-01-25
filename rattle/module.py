@@ -13,6 +13,7 @@ class ModuleData:
         self.implicit_bindings = {}
         self.submodules = []
         self.io_prims = []
+        self.storage_prims = []
         self.circuit = Circuit()
         self.names = Names()
         try:

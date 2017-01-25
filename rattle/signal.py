@@ -127,7 +127,7 @@ def _make_storage(signal_type, direction=None, wrap_prims=lambda x: x):
 
         if direction is not None:
             module._module_data.io_prims.append(prim)
-
+        module._module_data.storage_prims.append(prim)
         storage.append(prim)
 
         prims[key] = wrap_prims(prim)

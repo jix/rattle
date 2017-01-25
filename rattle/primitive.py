@@ -114,6 +114,13 @@ class PrimSignal(metaclass=PrimMeta):
         raise RuntimeError(
             'primitive signal %r is not a valid storage node for reset' % self)
 
+    @abc.abstractmethod
+    def __iter__(self):
+        pass
+
+    def verilog_expr(self):
+        raise RuntimeError('unexpected primitive %r in rvalue' % self)
+
 
 class PrimStorage(PrimSignal):
     def __init__(self, module, direction, width, dimensions):
@@ -156,6 +163,9 @@ class PrimStorage(PrimSignal):
 
     def add_to_circuit(self, circuit, target, condition, source):
         circuit.add_combinational(self, target, condition, source)
+
+    def __iter__(self):
+        return iter(())
 
 
 class PrimValue(PrimSignal, metaclass=abc.ABCMeta):
@@ -229,6 +239,9 @@ class PrimReg(PrimValue):
             circuit.add_initial(self, target, source)
         # TODO Should we error if no reset is emitted?
 
+    def __iter__(self):
+        yield self.x
+
 
 class PrimIndex(PrimValue):
     def __init__(self, index, x):
@@ -271,6 +284,15 @@ class PrimIndex(PrimValue):
         x, storage = self.x.lower_target()
         return PrimIndex(self.index, x), storage
 
+    def __iter__(self):
+        yield self.index
+        yield self.x
+
+    def verilog_expr(self):
+        x = (self.x, 'indexable')
+        index = (self.index, 'self')
+        return (x, '[', index, ']'), 'indexable'
+
 
 class PrimNot(PrimValue):
     def __init__(self, x):
@@ -289,6 +311,13 @@ class PrimNot(PrimValue):
     @property
     def allowed_readers(self):
         return self.x.allowed_readers
+
+    def __iter__(self):
+        yield self.x
+
+    def verilog_expr(self):
+        x = (self.x, 'context')
+        return ('~', x), 'context'
 
 
 class PrimConcat(PrimValue):
@@ -310,6 +339,20 @@ class PrimConcat(PrimValue):
     def allowed_readers(self):
         return self.x.allowed_readers
 
+    def __iter__(self):
+        return iter(self.parts)
+
+    def verilog_expr(self):
+        tokens = []
+        for part in reversed(self.parts):
+            tokens.append(', ')
+            tokens.append((part, 'self'))
+
+        tokens[0] = '{'
+        tokens.append('}')
+
+        return tokens, 'self'
+
 
 class PrimBinaryOp(PrimValue, metaclass=abc.ABCMeta):
     def __init__(self, a, b):
@@ -329,33 +372,54 @@ class PrimBinaryOp(PrimValue, metaclass=abc.ABCMeta):
     def allowed_readers(self):
         return self.a.allowed_readers & self.b.allowed_readers
 
+    def __iter__(self):
+        yield self.a
+        yield self.b
+
+    def verilog_expr(self):
+        return (
+            (self.a, 'context'), self.verilog_op, (self.b, 'context')
+        ), 'context'
+
 
 class PrimAnd(PrimBinaryOp):
+    verilog_op = ' & '
+
     def eval(self, values):
         return values(self.a) & values(self.b)
 
 
 class PrimOr(PrimBinaryOp):
+    verilog_op = ' | '
+
     def eval(self, values):
         return values(self.a) | values(self.b)
 
 
 class PrimXor(PrimBinaryOp):
+    verilog_op = ' ^ '
+
     def eval(self, values):
         return values(self.a) ^ values(self.b)
 
 
 class PrimAdd(PrimBinaryOp):
+    verilog_op = ' + '
+
     def eval(self, values):
         return values(self.a) + values(self.b)
 
 
 class PrimSub(PrimBinaryOp):
+    verilog_op = ' - '
+
     def eval(self, values):
         return values(self.a) - values(self.b)
 
 
 class PrimMul(PrimBinaryOp):
+    verilog_op = ' * '
+
     def eval(self, values):
         return values(self.a) * values(self.b)
 
@@ -378,13 +442,26 @@ class PrimCompareOp(PrimValue, metaclass=abc.ABCMeta):
     def allowed_readers(self):
         return self.a.allowed_readers & self.b.allowed_readers
 
+    def __iter__(self):
+        yield self.a
+        yield self.b
+
+    def verilog_expr(self):
+        return (
+            (self.a, 'context'), self.verilog_op, (self.b, 'context')
+        ), 'self'
+
 
 class PrimEq(PrimCompareOp):
+    verilog_op = ' == '
+
     def eval(self, values):
         return bv(values(self.a) == values(self.b))
 
 
 class PrimLt(PrimCompareOp):
+    verilog_op = ' < '
+
     def eval(self, values):
         return bv(values(self.a) < values(self.b))
 
@@ -392,6 +469,12 @@ class PrimLt(PrimCompareOp):
 class PrimSignedLt(PrimCompareOp):
     def eval(self, values):
         return bv(values(self.a).sign_wrap() < values(self.b).sign_wrap())
+
+    def verilog_expr(self):
+        return (
+            '$signed(', (self.a, 'context'),
+            ') < $signed(', (self.b, 'context'), ')'
+        ), 'self'
 
 
 class PrimExtendOp(PrimValue, metaclass=abc.ABCMeta):
@@ -410,15 +493,25 @@ class PrimExtendOp(PrimValue, metaclass=abc.ABCMeta):
     def allowed_readers(self):
         return self.x.allowed_readers
 
+    def __iter__(self):
+        yield self.x
+
 
 class PrimSignExt(PrimExtendOp):
     def eval(self, values):
         return values(self.x).sign_extend(self.width)
 
+    def verilog_expr(self):
+        return ('$signed(', (self.x, 'context'), ')'), 'assign'
+
 
 class PrimZeroExt(PrimExtendOp):
     def eval(self, values):
         return values(self.x).extend(self.width)
+
+    def verilog_expr(self):
+        # TODO inline ext?
+        return ((self.x, 'context'), ), 'assign'
 
 
 class PrimSlice(PrimValue):
@@ -451,6 +544,20 @@ class PrimSlice(PrimValue):
         x, storage = self.x.lower_target()
         return PrimSlice(self.start, self.width, x), storage
 
+    def __iter__(self):
+        yield self.x
+
+    def verilog_expr(self):
+        if self.width == 1:
+            slice_str = '[%i]' % self.start
+        else:
+            slice_str = '[%i:%i]' % (self.start + self.width - 1, self.start)
+
+        return (
+            (self.x, 'named'),
+            slice_str
+        ), 'self'
+
 
 class PrimRepeat(PrimValue):
     def __init__(self, count, x):
@@ -470,6 +577,16 @@ class PrimRepeat(PrimValue):
     @property
     def allowed_readers(self):
         return self.x.allowed_readers
+
+    def __iter__(self):
+        yield self.x
+
+    def verilog_expr(self):
+        return (
+            '{%i{' % self.count,
+            (self.x, 'self'),
+            '}}'
+        ), 'self'
 
 
 class PrimBitIndex(PrimValue):
@@ -507,6 +624,15 @@ class PrimBitIndex(PrimValue):
         else:
             x, storage = self.x.lower_target()
             return PrimBitIndex(self.index, x), storage
+
+    def __iter__(self):
+        yield self.index
+        yield self.x
+
+    def verilog_expr(self):
+        return (
+            (self.x, 'indexable'), '[', (self.index, 'self'), ']'
+        ), 'self'
 
 
 class PrimMux(PrimValue):
@@ -566,6 +692,20 @@ class PrimMux(PrimValue):
             select = PrimEq(self.index, index)
             yield port, condition + ((True, select),), source
 
+    def __iter__(self):
+        yield self.index
+        yield from iter(self.ports)
+
+    def verilog_expr(self):
+        if self.index.width != 1:
+            # TODO implement larger muxes
+            raise RuntimeError('mux exprs not supported yet')
+        return (
+            (self.index, 'self'), ' ? ',
+            (self.ports[1], 'context'), ' : ',
+            (self.ports[0], 'context')
+        ), 'self'
+
 
 class PrimTable(PrimValue):
     def __init__(self, table):
@@ -599,6 +739,9 @@ class PrimTable(PrimValue):
             writers &= entry.allowed_writers
         return writers
 
+    def __iter__(self):
+        return iter(self.table)
+
 
 class PrimConst(PrimValue):
     def __init__(self, value):
@@ -619,3 +762,9 @@ class PrimConst(PrimValue):
     @property
     def allowed_readers(self):
         return AllSet()
+
+    def __iter__(self):
+        return iter(())
+
+    def verilog_expr(self):
+        return ('%i\'b%s' % (self.width, self.value),), 'const'
