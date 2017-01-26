@@ -1,5 +1,6 @@
 import io
 from itertools import product
+from collections import OrderedDict
 
 
 def _mark_last(i):
@@ -14,8 +15,16 @@ def _mark_last(i):
     yield True, val
 
 
+class ModuleSources:
+    def __init__(self):
+        self.sources = OrderedDict()
+        self.names = set()
+
+
 class Verilog:
-    def __init__(self, module):
+    def __init__(self, module, module_sources=None):
+        # TODO make this adjustable / include parameters
+        self.module_name = type(module).__name__
         self.module = module
         self.module_data = module._module_data
         self.circuit = self.module_data.circuit
@@ -23,10 +32,22 @@ class Verilog:
         self.out = io.StringIO()
         self.indent = 0
         self.start_of_line = True
+        self.submodule_verilogs = {}
+        if module_sources is None:
+            self.module_sources = ModuleSources()
+        else:
+            self.module_sources = module_sources
 
+        self._process_submodules()
         self.circuit.finalize()
         self._prepare()
         self._emit()
+        self._store()
+
+    def _process_submodules(self):
+        for submodule in self.module_data.submodules:
+            self.submodule_verilogs[submodule] = Verilog(
+                submodule, self.module_sources)
 
     def _prepare(self):
         self.io_vecs = [
@@ -122,7 +143,7 @@ class Verilog:
         self._emit_submodule_io_decls()
         self._emit_subexpr_decls()
 
-        # TODO submodule instantiations
+        self._emit_submodule_instances()
 
         self._emit_io_vec_assigns()
         self._emit_subexpr_assigns()
@@ -136,6 +157,8 @@ class Verilog:
 
         self.indent -= 1
         self._writeln('endmodule')
+
+        self.source = self.out.getvalue()
 
     def _writeln(self, *args):
         self._write(*args)
@@ -259,6 +282,38 @@ class Verilog:
 
         self._writeln(storage, width, self.names.name_prim(port), vec, ';')
 
+    def _emit_submodule_instances(self):
+        if not self.module_data.submodules:
+            return
+        self._writeln('// module instantiations')
+        for submodule, verilog in self.submodule_verilogs.items():
+            submodule_data = submodule._module_data
+            self._write(
+                verilog.module_name, ' ',
+                self.names.name_submodule(submodule))
+            if submodule_data.io_prims:
+                self._writeln('(')
+                self.indent += 1
+                for last_port, port in _mark_last(submodule_data.io_prims):
+                    indices = product(*map(range, reversed(port.dimensions)))
+
+                    suffix_fmt = '_%i' * len(port.dimensions)
+                    index_fmt = '[%i]' * len(port.dimensions)
+
+                    for last_index, index in _mark_last(indices):
+                        sep = '' if last_port and last_index else ','
+                        self._writeln(
+                            '.', submodule_data.names.name_prim(port),
+                            suffix_fmt % index,
+                            '(', self.names.name_prim(port),
+                            index_fmt % index, ')', sep)
+                self.indent -= 1
+                self._writeln(');')
+            else:
+                self._writeln('();')
+
+            self._writeln()
+
     def _emit_subexpr_assigns(self):
         if not self.named_subexprs:
             return
@@ -348,3 +403,21 @@ class Verilog:
                 self._emit_expr(subexpr, parens=submode != 'indexable')
         if parens:
             self._write(')')
+
+    def _store(self):
+        source_id = (type(self.module), self.source)
+        try:
+            self.module_name = self.module_sources.sources[source_id]
+            return
+        except KeyError:
+            pass
+
+        unique_name = self.module_name
+        counter = 0
+        while unique_name in self.module_sources.names:
+            counter += 1
+            unique_name = '%s_%i' % (self.module_name, counter)
+        self.module_name = unique_name
+
+        self.module_sources.sources[source_id] = self.module_name
+        self.module_sources.names.add(self.module_name)
