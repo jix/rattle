@@ -16,6 +16,7 @@ class Circuit:
         # TODO forbid modification after finalizing
 
     def add_combinational(self, storage, target, condition, source):
+        storage = storage.simplify_read()
         try:
             block = self.combinational[storage]
         except KeyError:
@@ -23,6 +24,7 @@ class Circuit:
         block.add_assignment(storage, target, condition, source)
 
     def add_clocked(self, storage, clock, target, condition, source):
+        storage = storage.simplify_read()
         try:
             block = self.clocked[clock]
         except KeyError:
@@ -31,6 +33,7 @@ class Circuit:
         self.clocked_storage.setdefault(storage, set()).add(clock)
 
     def add_sync_reset(self, storage, clock, reset, target, source):
+        storage = storage.simplify_read()
         try:
             block = self.sync_reset[clock]
         except KeyError:
@@ -39,6 +42,7 @@ class Circuit:
         self.clocked_storage.setdefault(storage, set()).add(clock)
 
     def add_async_reset(self, storage, clock, reset, target, source):
+        storage = storage.simplify_read()
         try:
             block = self.async_reset[(clock, reset)]
         except KeyError:
@@ -47,6 +51,7 @@ class Circuit:
         self.clocked_storage.setdefault(storage, set()).add(clock)
 
     def add_initial(self, storage, target, source):
+        storage = storage.simplify_read()
         try:
             block = self.initial[storage]
         except KeyError:
