@@ -112,7 +112,7 @@ class Verilog:
                 self.named_prims.add(expr)
                 self.named_subexprs.append(expr)
 
-            if mode != 'const':
+            if not expr.verilog_is_simple():
                 self.read_prims.add(expr)
 
     def _emit(self):

@@ -121,6 +121,10 @@ class PrimSignal(metaclass=PrimMeta):
     def verilog_expr(self):
         raise RuntimeError('unexpected primitive %r in rvalue' % self)
 
+    def verilog_is_simple(self):
+        # pylint: disable=no-self-use
+        return False
+
 
 class PrimStorage(PrimSignal):
     def __init__(self, module, direction, width, dimensions):
@@ -166,6 +170,9 @@ class PrimStorage(PrimSignal):
 
     def __iter__(self):
         return iter(())
+
+    def verilog_is_simple(self):
+        return True
 
 
 class PrimValue(PrimSignal, metaclass=abc.ABCMeta):
@@ -293,6 +300,9 @@ class PrimIndex(PrimValue):
         index = (self.index, 'self')
         return (x, '[', index, ']'), 'indexable'
 
+    def verilog_is_simple(self):
+        return isinstance(self.index, PrimConst) and self.x.verilog_is_simple()
+
 
 class PrimNot(PrimValue):
     def __init__(self, x):
@@ -318,6 +328,9 @@ class PrimNot(PrimValue):
     def verilog_expr(self):
         x = (self.x, 'context')
         return ('~', x), 'context'
+
+    def verilog_is_simple(self):
+        return True
 
 
 class PrimConcat(PrimValue):
@@ -558,6 +571,9 @@ class PrimSlice(PrimValue):
             slice_str
         ), 'self'
 
+    def verilog_is_simple(self):
+        return self.x.verilog_is_simple()
+
 
 class PrimRepeat(PrimValue):
     def __init__(self, count, x):
@@ -768,3 +784,6 @@ class PrimConst(PrimValue):
 
     def verilog_expr(self):
         return ('%i\'b%s' % (self.width, self.value),), 'const'
+
+    def verilog_is_simple(self):
+        return True
