@@ -18,7 +18,7 @@ class ConditionStack:
                 'conditions cannot be used inside a reset block')
         condition = Bool.convert(condition, implicit=True)
         condition._access()
-        condition = condition._prim()
+        condition = condition._prim().simplify_read()
         self._stack[-1].append(condition)
         self._stack.append([])
 
