@@ -371,11 +371,18 @@ class Verilog:
                 self.indent += 1
                 self._emit_block_assignments(assignment[2])
                 self.indent -= 1
-                self._writeln('end else begin')
-                self.indent += 1
-                self._emit_block_assignments(assignment[3])
-                self.indent -= 1
-                self._writeln('end')
+                else_part = assignment[3]
+                if not else_part:
+                    self._writeln('end')
+                elif len(else_part) == 1 and else_part[0][0] == '?':
+                    self._write('else ')
+                    self._emit_block_assignments(else_part)
+                else:
+                    self._writeln('end else begin')
+                    self.indent += 1
+                    self._emit_block_assignments(else_part)
+                    self.indent -= 1
+                    self._writeln('end')
             else:
                 self._emit_expr(assignment[2], target=True)
                 self._write(' <= ')
