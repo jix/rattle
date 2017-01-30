@@ -112,7 +112,7 @@ class Verilog:
             self.named_prims.add(expr)
             self.named_subexprs.append(expr)
         else:
-            tokens, mode = expr.verilog_expr()
+            tokens, mode, _prec = expr.verilog_expr()
 
             if mode == 'assign':
                 named = True
@@ -123,7 +123,7 @@ class Verilog:
             for token in tokens:
                 if isinstance(token, str):
                     continue
-                subexpr, submode = token
+                subexpr, submode, _prec = token
                 self._prepare_expr(
                     subexpr,
                     named=submode == 'named',
@@ -389,7 +389,7 @@ class Verilog:
                 self._emit_expr(assignment[3])
                 self._writeln(';')
 
-    def _emit_expr(self, prim, target=False, expand=False, parens=False):
+    def _emit_expr(self, prim, target=False, expand=False, prec=99):
         if target:
             named = prim in self.storage
         else:
@@ -397,17 +397,16 @@ class Verilog:
         if named:
             self._write(self.names.name_prim(prim))
             return
-        tokens, mode = prim.verilog_expr()
-        if mode == 'constant':
-            parens = False
+        tokens, mode, expr_prec = prim.verilog_expr()
+        parens = expr_prec > prec
         if parens:
             self._write('(')
         for token in tokens:
             if isinstance(token, str):
                 self._write(token)
             else:
-                subexpr, submode = token
-                self._emit_expr(subexpr, parens=submode != 'indexable')
+                subexpr, submode, subprec = token
+                self._emit_expr(subexpr, prec=subprec)
         if parens:
             self._write(')')
 
