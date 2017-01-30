@@ -389,7 +389,7 @@ class Verilog:
                 self._emit_expr(assignment[3])
                 self._writeln(';')
 
-    def _emit_expr(self, prim, target=False, expand=False, prec=99):
+    def _emit_expr(self, prim, target=False, expand=False, mode=None, prec=99):
         if target:
             named = prim in self.storage
         else:
@@ -397,18 +397,20 @@ class Verilog:
         if named:
             self._write(self.names.name_prim(prim))
             return
-        tokens, mode, expr_prec = prim.verilog_expr()
-        parens = expr_prec > prec
+        tokens, expr_mode, expr_prec = prim.verilog_expr()
+        parens = '()' if expr_prec > prec else False
+        if expr_mode == 'context' and mode == 'no-context':
+            parens = '{}'
         if parens:
-            self._write('(')
+            self._write(parens[0])
         for token in tokens:
             if isinstance(token, str):
                 self._write(token)
             else:
                 subexpr, submode, subprec = token
-                self._emit_expr(subexpr, prec=subprec)
+                self._emit_expr(subexpr, mode=submode, prec=subprec)
         if parens:
-            self._write(')')
+            self._write(parens[1])
 
     def _store(self):
         source_id = (type(self.module), self.source)

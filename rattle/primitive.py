@@ -517,7 +517,7 @@ class PrimSignExt(PrimExtendOp):
         return values(self.x).sign_extend(self.width)
 
     def verilog_expr(self):
-        return ('$signed(', (self.x, 'context', 99), ')'), 'assign', 0
+        return ('$signed(', (self.x, 'self', 99), ')'), 'assign', 0
 
 
 class PrimZeroExt(PrimExtendOp):
@@ -526,7 +526,7 @@ class PrimZeroExt(PrimExtendOp):
 
     def verilog_expr(self):
         # TODO inline ext?
-        return ((self.x, 'context', 99), ), 'assign', 0
+        return ((self.x, 'no-context', 99), ), 'assign', 0
 
 
 class PrimSlice(PrimValue):
