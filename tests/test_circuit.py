@@ -55,37 +55,3 @@ def test_block_recover_nesting():
         block.add_assignment(*assignment)
 
     assert block.assignments == nested
-
-
-def test_finalize_sync_resets(module):
-    self = module
-
-    self.test = Reg(Bool)
-
-    with reset:
-        self.test[:] = False
-
-    self.test[:] = ~self.test
-
-    circuit = self._module_data.circuit
-    circuit.finalize()
-
-    assert not circuit.sync_reset
-    clocked_block = next(iter(circuit.clocked.values()))
-    assert clocked_block.assignments[-1][0] == '?'
-
-
-def test_find_assign_in_combinational(module):
-    self = module
-
-    self.a = Wire(Bool)
-    self.b = Wire(Bool)
-
-    self.a[:] = ~self.b
-
-    circuit = self._module_data.circuit
-    circuit.finalize()
-
-    assert not circuit.combinational
-    assert circuit.assign[self.a._prim()] == [
-        (self.a._prim(), (~self.b)._prim())]

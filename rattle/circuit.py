@@ -2,6 +2,7 @@ from collections import OrderedDict
 
 
 class Circuit:
+
     def __init__(self):
         self.combinational = OrderedDict()
         self.assign = OrderedDict()
@@ -58,39 +59,24 @@ class Circuit:
             block = self.initial[storage] = Block()
         block.add_assignment(storage, target, (), source)
 
+    @staticmethod
+    def _opt_passes():
+        from .opt.lower_sync_reset import LowerSyncReset
+        from .opt.find_continuous_assignments import FindContinuousAssignments
+
+        return [
+            LowerSyncReset,
+            FindContinuousAssignments,
+        ]
+
     def finalize(self):
         if self.finalized:
             return
-        self._finalize_sync_resets()
-        self._find_assign_in_combinational()
+
+        for opt_pass in self._opt_passes():
+            opt_pass(self)
+
         self.finalized = True
-
-    def _finalize_sync_resets(self):
-        for clock, reset_block in self.sync_reset.items():
-            try:
-                block = self.clocked[clock]
-            except KeyError:
-                block = self.clocked[clock] = Block()
-            block.assignments.extend(reset_block.assignments)
-            block.storage.update(reset_block.storage)
-
-        self.sync_reset = OrderedDict()
-
-    def _find_assign_in_combinational(self):
-        # TODO expand this to work on vector storage
-        for storage in list(self.combinational.keys()):
-            if storage in self.clocked_storage or storage in self.initial:
-                continue
-            block = self.combinational[storage]
-            if len(block.assignments) != 1:
-                continue
-            assignment = block.assignments[0]
-            if assignment[0] != '=':
-                continue
-            if assignment[2] != storage:
-                continue
-            del self.combinational[storage]
-            self.assign.setdefault(storage, []).append(assignment[2:])
 
     def __repr__(self):
         lines = []
