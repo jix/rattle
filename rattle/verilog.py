@@ -334,7 +334,7 @@ class Verilog:
                 self._emit_expr(target, target=True)
                 self._write(' = ')
                 self._emit_expr(source)
-                self._writeln('\n')
+                self._writeln(';')
         self._writeln()
 
     def _emit_combinational(self):
