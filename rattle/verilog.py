@@ -388,7 +388,7 @@ class Verilog:
                 if not else_part:
                     self._writeln('end')
                 elif len(else_part) == 1 and else_part[0][0] == '?':
-                    self._write('else ')
+                    self._write('end else ')
                     self._emit_block_assignments(else_part)
                 else:
                     self._writeln('end else begin')
