@@ -149,6 +149,7 @@ class Verilog:
         self._emit_subexpr_assigns()
         self._emit_assigns()
 
+        self._emit_initial()
         self._emit_combinational()
         self._emit_clocked()
 
@@ -336,6 +337,18 @@ class Verilog:
                 self._emit_expr(source)
                 self._writeln(';')
         self._writeln()
+
+    def _emit_initial(self):
+        if not self.circuit.initial:
+            return
+        self._writeln('// initial assignments')
+        for _storage, block in self.circuit.initial.items():
+            self._writeln('initial begin')
+            self.indent += 1
+            self._emit_block_assignments(block.assignments)
+            self.indent -= 1
+            self._writeln('end')
+            self._writeln()
 
     def _emit_combinational(self):
         if not self.circuit.combinational:
