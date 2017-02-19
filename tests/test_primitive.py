@@ -60,3 +60,7 @@ def test_lower_mux_target_to_conditional_assigns():
         (b, b, ((True, e), (True, PrimEq(a, PrimConst(bv('0'))))), d),
         (c, c, ((True, e), (True, PrimEq(a, PrimConst(bv('1'))))), d),
     ]
+
+
+def test_equality_considers_shape():
+    assert PrimConst(bv('00')) != PrimConst(bv('000'))

@@ -179,10 +179,10 @@ class PrimValue(PrimSignal, metaclass=abc.ABCMeta):
     def __eq__(self, other):
         if not isinstance(other, type(self)):
             return NotImplemented
-        return self.tuple() == other.tuple()
+        return self.shape == other.shape and self.tuple() == other.tuple()
 
     def __hash__(self):
-        return hash((type(self), self.tuple()))
+        return hash((type(self), self.shape, self.tuple()))
 
     @abc.abstractmethod
     def tuple(self):
