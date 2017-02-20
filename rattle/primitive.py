@@ -64,52 +64,52 @@ class PrimSignal(metaclass=PrimMeta):
     def allowed_writers(self):
         pass
 
-    def lower_and_add_to_circuit(self, condition, source, circuit, reset):
-        lowered_assignments = self.lower_assignment(condition, source)
+    def lower_and_add_to_circuit(self, condition, rvalue, circuit, reset):
+        lowered_assignments = self.lower_assignment(condition, rvalue)
 
         for assignment in lowered_assignments:
-            storage, target, condition, source = assignment
+            storage, lvalue, condition, rvalue = assignment
             if reset:
                 if condition != ():
                     # TODO Change exception type
                     raise RuntimeError(
-                        "Assignment targets must be static for resets")
-                storage.add_reset_to_circuit(circuit, target, source)
+                        "Assignment lvalues must be static for resets")
+                storage.add_reset_to_circuit(circuit, lvalue, rvalue)
             else:
-                storage.add_to_circuit(circuit, target, condition, source)
+                storage.add_to_circuit(circuit, lvalue, condition, rvalue)
 
-    def lower_assignment(self, condition, source):
-        for assignment in self.split_assignment(condition, source):
-            subtarget, subcondition, subsource = assignment
+    def lower_assignment(self, condition, rvalue):
+        for assignment in self.split_assignment(condition, rvalue):
+            sublvalue, subcondition, subrvalue = assignment
 
-            subtarget, storage = subtarget.lower_target()
-            yield storage, subtarget, subcondition, subsource
+            sublvalue, storage = sublvalue.lower_lvalue()
+            yield storage, sublvalue, subcondition, subrvalue
 
-    def split_assignment(self, condition, source):
-        source = source.simplify_read()
+    def split_assignment(self, condition, rvalue):
+        rvalue = rvalue.simplify_read()
         if self.dimensions:
             index_width = log2up(self.dimensions[-1])
             for i in range(self.dimensions[-1]):
                 index = PrimConst(BitVec(index_width, i))
                 yield from PrimIndex(index, self).split_assignment(
-                    condition, PrimIndex(index, source))
+                    condition, PrimIndex(index, rvalue))
         else:
-            yield from self.split_scalar(condition, source)
+            yield from self.split_scalar(condition, rvalue)
 
-    def split_scalar(self, condition, source):
-        yield self, condition, source
+    def split_scalar(self, condition, rvalue):
+        yield self, condition, rvalue
 
-    def lower_target(self):
+    def lower_lvalue(self):
         # pylint: disable=no-self-use
         raise RuntimeError(
-            'assignment target could not be '
-            'translated into simple targets')
+            'assignment lvalue could not be '
+            'translated into simple lvalues')
 
-    def add_to_circuit(self, circuit, target, condition, source):
+    def add_to_circuit(self, circuit, lvalue, condition, rvalue):
         raise RuntimeError(
             'primitive signal %r is not a valid storage node' % self)
 
-    def add_reset_to_circuit(self, circuit, target, source):
+    def add_reset_to_circuit(self, circuit, lvalue, rvalue):
         # TODO This is not just an internal error, make nice
         raise RuntimeError(
             'primitive signal %r is not a valid storage node for reset' % self)
@@ -165,11 +165,11 @@ class PrimStorage(PrimSignal):
         else:
             return frozenset([self.module])
 
-    def lower_target(self):
+    def lower_lvalue(self):
         return self, self
 
-    def add_to_circuit(self, circuit, target, condition, source):
-        circuit.add_combinational(self, target, condition, source)
+    def add_to_circuit(self, circuit, lvalue, condition, rvalue):
+        circuit.add_combinational(self, lvalue, condition, rvalue)
 
     def __iter__(self):
         return iter(())
@@ -232,21 +232,21 @@ class PrimReg(PrimValue):
     def allowed_writers(self):
         return self.x.allowed_writers
 
-    def lower_target(self):
+    def lower_lvalue(self):
         return self.x, self
 
-    def add_to_circuit(self, circuit, target, condition, source):
+    def add_to_circuit(self, circuit, lvalue, condition, rvalue):
         if self.en is not None:
             condition += ((True, self.en),)
-        circuit.add_clocked(self, self.clk, target, condition, source)
+        circuit.add_clocked(self, self.clk, lvalue, condition, rvalue)
 
-    def add_reset_to_circuit(self, circuit, target, source):
+    def add_reset_to_circuit(self, circuit, lvalue, rvalue):
         if self.reset_mode in ('async+init', 'async'):
-            circuit.add_async_reset(self, self.clk, self.reset, target, source)
+            circuit.add_async_reset(self, self.clk, self.reset, lvalue, rvalue)
         elif self.reset_mode in ('sync+init', 'sync'):
-            circuit.add_sync_reset(self, self.clk, self.reset, target, source)
+            circuit.add_sync_reset(self, self.clk, self.reset, lvalue, rvalue)
         if self.reset_mode in ('init', 'sync+init', 'async+init'):
-            circuit.add_initial(self, target, source)
+            circuit.add_initial(self, lvalue, rvalue)
         # TODO Should we error if no reset is emitted?
 
     def __iter__(self):
@@ -294,8 +294,8 @@ class PrimIndex(PrimValue):
     def allowed_writers(self):
         return self.x.allowed_writers & self.index.allowed_readers
 
-    def lower_target(self):
-        x, storage = self.x.lower_target()
+    def lower_lvalue(self):
+        x, storage = self.x.lower_lvalue()
         return PrimIndex(self.index, x), storage
 
     def __iter__(self):
@@ -588,8 +588,8 @@ class PrimSlice(PrimValue):
     def allowed_writers(self):
         return self.x.allowed_writers
 
-    def lower_target(self):
-        x, storage = self.x.lower_target()
+    def lower_lvalue(self):
+        x, storage = self.x.lower_lvalue()
         return PrimSlice(self.start, self.width, x), storage
 
     def __iter__(self):
@@ -674,12 +674,12 @@ class PrimBitIndex(PrimValue):
     def allowed_writers(self):
         return self.index.allowed_readers & self.x.allowed_writers
 
-    def lower_target(self):
+    def lower_lvalue(self):
         # TODO Lower dynamic indexing of a slice into offset dynamic indexing
         if isinstance(self.x, PrimSlice):
-            return super().lower_target()
+            return super().lower_lvalue()
         else:
-            x, storage = self.x.lower_target()
+            x, storage = self.x.lower_lvalue()
             return PrimBitIndex(self.index, x), storage
 
     def __iter__(self):
@@ -746,11 +746,11 @@ class PrimMux(PrimValue):
             writers &= port.allowed_writers
         return writers
 
-    def split_scalar(self, condition, source):
+    def split_scalar(self, condition, rvalue):
         for i, port in enumerate(self.ports):
             index = PrimConst(BitVec(self.index.width, i))
             select = PrimEq(self.index, index)
-            yield port, condition + ((True, select),), source
+            yield port, condition + ((True, select),), rvalue
 
     def __iter__(self):
         yield self.index

@@ -51,7 +51,7 @@ def test_lower_vector_to_scalars():
     ]
 
 
-def test_lower_mux_target_to_conditional_assigns():
+def test_lower_mux_lvalue_to_conditional_assigns():
     a, b, c, d, e = mkvars('a b c d e')
 
     lowered = list(PrimMux(a, [b, c]).lower_assignment(((True, e),), d))

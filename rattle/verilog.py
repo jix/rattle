@@ -78,8 +78,8 @@ class Verilog:
 
         for storage, assignments in self.circuit.assign.items():
             self.wire_storage.add(storage)
-            for _target, source in assignments:
-                self._prepare_expr(source)
+            for _lvalue, rvalue in assignments:
+                self._prepare_expr(rvalue)
 
         for _storage, block in self.circuit.combinational.items():
             self._prepare_block(block)
@@ -332,11 +332,11 @@ class Verilog:
             return
         self._writeln('// continuous assignments')
         for _storage, assigns in self.circuit.assign.items():
-            for target, source in assigns:
+            for lvalue, rvalue in assigns:
                 self._write('assign ')
-                self._emit_expr(target, target=True)
+                self._emit_expr(lvalue, lvalue=True)
                 self._write(' = ')
-                self._emit_expr(source)
+                self._emit_expr(rvalue)
                 self._writeln(';')
         self._writeln()
 
@@ -401,15 +401,15 @@ class Verilog:
                     self.indent -= 1
                     self._writeln('end')
             elif isinstance(assignment, BlockAssign):
-                self._emit_expr(assignment.lvalue, target=True)
+                self._emit_expr(assignment.lvalue, lvalue=True)
                 self._write(' <= ')
                 self._emit_expr(assignment.rvalue)
                 self._writeln(';')
             else:
                 assert False
 
-    def _emit_expr(self, prim, target=False, expand=False, mode=None, prec=99):
-        if target:
+    def _emit_expr(self, prim, lvalue=False, expand=False, mode=None, prec=99):
+        if lvalue:
             named = prim in self.storage
         else:
             named = prim in self.named_prims and not expand

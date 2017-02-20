@@ -16,48 +16,48 @@ class Circuit:
         self.finalized = False
         # TODO forbid modification after finalizing
 
-    def add_combinational(self, storage, target, condition, source):
+    def add_combinational(self, storage, lvalue, condition, rvalue):
         storage = storage.simplify_read()
         try:
             block = self.combinational[storage]
         except KeyError:
             block = self.combinational[storage] = Block()
-        block.add_assignment(storage, target, condition, source)
+        block.add_assignment(storage, lvalue, condition, rvalue)
 
-    def add_clocked(self, storage, clock, target, condition, source):
+    def add_clocked(self, storage, clock, lvalue, condition, rvalue):
         storage = storage.simplify_read()
         try:
             block = self.clocked[clock]
         except KeyError:
             block = self.clocked[clock] = Block()
-        block.add_assignment(storage, target, condition, source)
+        block.add_assignment(storage, lvalue, condition, rvalue)
         self.clocked_storage.setdefault(storage, set()).add(clock)
 
-    def add_sync_reset(self, storage, clock, reset, target, source):
+    def add_sync_reset(self, storage, clock, reset, lvalue, rvalue):
         storage = storage.simplify_read()
         try:
             block = self.sync_reset[clock]
         except KeyError:
             block = self.sync_reset[clock] = Block()
-        block.add_assignment(storage, target, ((True, reset),), source)
+        block.add_assignment(storage, lvalue, ((True, reset),), rvalue)
         self.clocked_storage.setdefault(storage, set()).add(clock)
 
-    def add_async_reset(self, storage, clock, reset, target, source):
+    def add_async_reset(self, storage, clock, reset, lvalue, rvalue):
         storage = storage.simplify_read()
         try:
             block = self.async_reset[(clock, reset)]
         except KeyError:
             block = self.async_reset[(clock, reset)] = Block()
-        block.add_assignment(storage, target, (), source)
+        block.add_assignment(storage, lvalue, (), rvalue)
         self.clocked_storage.setdefault(storage, set()).add(clock)
 
-    def add_initial(self, storage, target, source):
+    def add_initial(self, storage, lvalue, rvalue):
         storage = storage.simplify_read()
         try:
             block = self.initial[storage]
         except KeyError:
             block = self.initial[storage] = Block()
-        block.add_assignment(storage, target, (), source)
+        block.add_assignment(storage, lvalue, (), rvalue)
 
     @staticmethod
     def _opt_passes():
@@ -91,8 +91,8 @@ class Circuit:
 
     def rvalues(self):
         for assignments in self.assign.values():
-            for _target, source in assignments:
-                yield source
+            for _lvalue, rvalue in assignments:
+                yield rvalue
 
         for block in self.blocks():
             yield from block.rvalues()
@@ -135,7 +135,7 @@ class Block:
         self.assignments = []
         self.storage = set()
 
-    def add_assignment(self, storage, target, condition, source):
+    def add_assignment(self, storage, lvalue, condition, rvalue):
         position = self.assignments
         new_condition = ()
 
@@ -158,7 +158,7 @@ class Block:
             else:
                 position = if_node.false
 
-        position.append(BlockAssign(storage, target, source))
+        position.append(BlockAssign(storage, lvalue, rvalue))
         self.storage.add(storage)
 
     def rvalues(self):

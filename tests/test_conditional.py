@@ -8,10 +8,10 @@ class MockCircuit:
     def __init__(self):
         self.conditions = []
 
-    def add_combinational(self, storage, target, condition, source):
+    def add_combinational(self, storage, lvalue, condition, rvalue):
         self.conditions.append(condition)
 
-    def add_clocked(self, storage, clock, target, condition, source):
+    def add_clocked(self, storage, clock, lvalue, condition, rvalue):
         self.conditions.append(condition)
 
 

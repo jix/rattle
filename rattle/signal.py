@@ -32,12 +32,12 @@ class Signal(metaclass=abc.ABCMeta):
         value._access(write=False)
 
         for key, (flip, *_) in self.signal_type._prim_shape.items():
-            target, source = self._prims[key], value._prims[key]
+            lvalue, rvalue = self._prims[key], value._prims[key]
             if flip:
-                target, source = source, target
+                lvalue, rvalue = rvalue, lvalue
 
-            target.lower_and_add_to_circuit(
-                condition, source,
+            lvalue.lower_and_add_to_circuit(
+                condition, rvalue,
                 circuit=module_data.circuit, reset=is_reset)
 
     def _access(self, write=False):
