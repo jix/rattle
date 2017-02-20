@@ -1,6 +1,7 @@
 import io
 from itertools import product
 from collections import OrderedDict
+from .circuit import BlockAssign, BlockCond
 
 
 def _mark_last(i):
@@ -97,13 +98,14 @@ class Verilog:
 
     def _prepare_block_assignments(self, assignments):
         for assignment in assignments:
-            if assignment[0] == '=':
-                _target, source = assignment[2:]
-                self._prepare_expr(source)
-            elif assignment[0] == '?':
-                self._prepare_expr(assignment[1])
-                self._prepare_block_assignments(assignment[2])
-                self._prepare_block_assignments(assignment[3])
+            if isinstance(assignment, BlockAssign):
+                self._prepare_expr(assignment.rvalue)
+            elif isinstance(assignment, BlockCond):
+                self._prepare_expr(assignment.condition)
+                self._prepare_block_assignments(assignment.true)
+                self._prepare_block_assignments(assignment.false)
+            else:
+                assert False
 
     def _prepare_expr(self, expr, named=False, indexable=False):
         if expr in self.named_prims:
@@ -377,17 +379,19 @@ class Verilog:
 
     def _emit_block_assignments(self, assignments):
         for assignment in assignments:
-            if assignment[0] == '?':
+            if isinstance(assignment, BlockCond):
                 self._write('if (')
-                self._emit_expr(assignment[1])
+                self._emit_expr(assignment.condition)
                 self._writeln(') begin')
                 self.indent += 1
-                self._emit_block_assignments(assignment[2])
+                self._emit_block_assignments(assignment.true)
                 self.indent -= 1
-                else_part = assignment[3]
+                else_part = assignment.false
                 if not else_part:
                     self._writeln('end')
-                elif len(else_part) == 1 and else_part[0][0] == '?':
+                elif (
+                        len(else_part) == 1 and
+                        isinstance(else_part[0], BlockCond)):
                     self._write('end else ')
                     self._emit_block_assignments(else_part)
                 else:
@@ -396,11 +400,13 @@ class Verilog:
                     self._emit_block_assignments(else_part)
                     self.indent -= 1
                     self._writeln('end')
-            else:
-                self._emit_expr(assignment[2], target=True)
+            elif isinstance(assignment, BlockAssign):
+                self._emit_expr(assignment.lvalue, target=True)
                 self._write(' <= ')
-                self._emit_expr(assignment[3])
+                self._emit_expr(assignment.rvalue)
                 self._writeln(';')
+            else:
+                assert False
 
     def _emit_expr(self, prim, target=False, expand=False, mode=None, prec=99):
         if target:

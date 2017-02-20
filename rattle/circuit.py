@@ -1,4 +1,4 @@
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 
 
 class Circuit:
@@ -126,6 +126,10 @@ class Circuit:
         return '\n'.join(lines)
 
 
+BlockCond = namedtuple('BlockCond', 'condition true false')
+BlockAssign = namedtuple('BlockAssign', 'storage lvalue rvalue')
+
+
 class Block:
     def __init__(self):
         self.assignments = []
@@ -136,29 +140,36 @@ class Block:
         new_condition = ()
 
         for i, test in enumerate(condition):
-            if position and position[-1][:2] == ('?', test[1]):
-                position = position[-1][3 - test[0]]
+            if (position and isinstance(position[-1], BlockCond)
+                    and position[-1].condition == test[1]):
+                if test[0]:
+                    position = position[-1].true
+                else:
+                    position = position[-1].false
             else:
                 new_condition = condition[i:]
                 break
 
         for test in new_condition:
-            if_node = ('?', test[1], [], [])
+            if_node = BlockCond(test[1], [], [])
             position.append(if_node)
-            position = if_node[3 - test[0]]
+            if test[0]:
+                position = if_node.true
+            else:
+                position = if_node.false
 
-        position.append(('=', storage, target, source))
+        position.append(BlockAssign(storage, target, source))
         self.storage.add(storage)
 
     def rvalues(self):
         def recurse(assignments):
             for statement in assignments:
-                if statement[0] == '=':
-                    yield statement[3]
-                elif statement[0] == '?':
-                    yield statement[1]
-                    yield from recurse(statement[2])
-                    yield from recurse(statement[3])
+                if isinstance(statement, BlockAssign):
+                    yield statement.rvalue
+                elif isinstance(statement, BlockCond):
+                    yield statement.condition
+                    yield from recurse(statement.true)
+                    yield from recurse(statement.false)
                 else:
                     assert False
         yield from recurse(self.assignments)
@@ -166,17 +177,17 @@ class Block:
     def map_rvalues(self, map_fn):
         def recurse(assignments):
             for i, statement in enumerate(assignments):
-                if statement[0] == '=':
-                    assignments[i] = (
-                        '=', statement[1],
-                        statement[2], map_fn(statement[3]))
-                elif statement[0] == '?':
-                    assignments[i] = (
-                        '?', map_fn(statement[1]),
-                        statement[2],
-                        statement[3])
-                    recurse(statement[2])
-                    recurse(statement[3])
+                if isinstance(statement, BlockAssign):
+                    assignments[i] = BlockAssign(
+                        statement.storage,
+                        statement.lvalue, map_fn(statement.rvalue))
+                elif isinstance(statement, BlockCond):
+                    assignments[i] = BlockCond(
+                        map_fn(statement.condition),
+                        statement.true,
+                        statement.false)
+                    recurse(statement.true)
+                    recurse(statement.false)
                 else:
                     assert False
         recurse(self.assignments)
@@ -192,15 +203,15 @@ class Block:
                 lines.append('%spass' % indent)
                 return
             for statement in assignments:
-                if statement[0] == '=':
+                if isinstance(statement, BlockAssign):
                     lines.append('%s%r := %r' % (
-                        indent, statement[2], statement[3]))
-                elif statement[0] == '?':
+                        indent, statement.lvalue, statement.rvalue))
+                elif isinstance(statement, BlockCond):
                     lines.append('%swhen %r:' % (
-                        indent, statement[1]))
-                    recurse(statement[2], indent + '  ')
+                        indent, statement.condition))
+                    recurse(statement.true, indent + '  ')
                     lines.append('%selse:' % indent)
-                    recurse(statement[3], indent + '  ')
+                    recurse(statement.false, indent + '  ')
                 else:
                     assert False
 

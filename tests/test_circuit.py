@@ -20,33 +20,33 @@ def test_block_recover_nesting():
     ]
 
     nested = [
-        ('=', 'S', 't0', 's0'),
-        ('?', 'c0', [
-            ('=', 'S', 't1', 's1'),
+        BlockAssign('S', 't0', 's0'),
+        BlockCond('c0', [
+            BlockAssign('S', 't1', 's1'),
         ], [
-            ('?', 'c1', [
-                ('=', 'S', 't2', 's2'),
-                ('?', 'c2', [
-                    ('=', 'S', 't3', 's3'),
+            BlockCond('c1', [
+                BlockAssign('S', 't2', 's2'),
+                BlockCond('c2', [
+                    BlockAssign('S', 't3', 's3'),
                 ], [
-                    ('=', 'S', 't4', 's4'),
+                    BlockAssign('S', 't4', 's4'),
                 ])
             ], [
-                ('?', 'c2', [], [
-                    ('=', 'S', 't5', 's5'),
+                BlockCond('c2', [], [
+                    BlockAssign('S', 't5', 's5'),
                 ])
             ])
         ]),
-        ('?', 'c3', [
-            ('=', 'S', 't6', 's6'),
+        BlockCond('c3', [
+            BlockAssign('S', 't6', 's6'),
         ], []),
-        ('=', 'S', 't7', 's7'),
-        ('?', 'c3', [
-            ('=', 'S', 't8', 's8'),
+        BlockAssign('S', 't7', 's7'),
+        BlockCond('c3', [
+            BlockAssign('S', 't8', 's8'),
         ], []),
-        ('?', 'c4', [
-            ('?', 'c5', [
-                ('=', 'S', 't9', 's9'),
+        BlockCond('c4', [
+            BlockCond('c5', [
+                BlockAssign('S', 't9', 's9'),
             ], [])
         ], [])
     ]

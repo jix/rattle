@@ -20,7 +20,7 @@ def test_reduce_simple_not(module):
     circuit = self._module_data.circuit
     ReduceBitWidths(circuit)
     clocked_block = next(iter(circuit.clocked.values()))
-    assert clocked_block.assignments[0][3] == expected.simplify_read()
+    assert clocked_block.assignments[0].rvalue == expected.simplify_read()
 
 
 def test_reduce_simple_add(module):
@@ -37,7 +37,7 @@ def test_reduce_simple_add(module):
     circuit = self._module_data.circuit
     ReduceBitWidths(circuit)
     clocked_block = next(iter(circuit.clocked.values()))
-    assert clocked_block.assignments[0][3] == expected.simplify_read()
+    assert clocked_block.assignments[0].rvalue == expected.simplify_read()
 
 
 def test_reduce_simple_extend_short(module):
@@ -53,7 +53,7 @@ def test_reduce_simple_extend_short(module):
     circuit = self._module_data.circuit
     ReduceBitWidths(circuit)
     clocked_block = next(iter(circuit.clocked.values()))
-    assert clocked_block.assignments[0][3] == expected.simplify_read()
+    assert clocked_block.assignments[0].rvalue == expected.simplify_read()
 
 
 def test_reduce_simple_extend_wide(module):
@@ -69,7 +69,7 @@ def test_reduce_simple_extend_wide(module):
     circuit = self._module_data.circuit
     ReduceBitWidths(circuit)
     clocked_block = next(iter(circuit.clocked.values()))
-    assert clocked_block.assignments[0][3] == expected.simplify_read()
+    assert clocked_block.assignments[0].rvalue == expected.simplify_read()
 
 
 def test_reduce_simple_slice(module):
@@ -85,7 +85,7 @@ def test_reduce_simple_slice(module):
     circuit = self._module_data.circuit
     ReduceBitWidths(circuit)
     clocked_block = next(iter(circuit.clocked.values()))
-    assert clocked_block.assignments[0][3] == expected.simplify_read()
+    assert clocked_block.assignments[0].rvalue == expected.simplify_read()
 
 
 def test_reduce_multiple_readers_not(module):
@@ -104,5 +104,5 @@ def test_reduce_multiple_readers_not(module):
     circuit = self._module_data.circuit
     ReduceBitWidths(circuit)
     clocked_block = next(iter(circuit.clocked.values()))
-    assert clocked_block.assignments[0][3] == expected_a.simplify_read()
-    assert clocked_block.assignments[1][3] == expected_b.simplify_read()
+    assert clocked_block.assignments[0].rvalue == expected_a.simplify_read()
+    assert clocked_block.assignments[1].rvalue == expected_b.simplify_read()

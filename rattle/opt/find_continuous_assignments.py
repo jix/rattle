@@ -1,3 +1,6 @@
+from ..circuit import BlockAssign
+
+
 class FindContinuousAssignments:
     def __init__(self, circuit):
         # TODO expand this to work on vector storage
@@ -9,9 +12,10 @@ class FindContinuousAssignments:
             if len(block.assignments) != 1:
                 continue
             assignment = block.assignments[0]
-            if assignment[0] != '=':
+            if not isinstance(assignment, BlockAssign):
                 continue
-            if assignment[2] != storage:
+            if assignment.lvalue != storage:
                 continue
             del circuit.combinational[storage]
-            circuit.assign.setdefault(storage, []).append(assignment[2:])
+            circuit.assign.setdefault(storage, []).append(
+                (assignment.lvalue, assignment.rvalue))

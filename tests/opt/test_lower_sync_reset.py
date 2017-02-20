@@ -2,6 +2,7 @@ from rattle.circuit import *
 from rattle.signal import *
 from rattle.type import *
 from rattle.conditional import *
+from rattle.implicit import *
 
 from rattle.opt.lower_sync_reset import LowerSyncReset
 
@@ -20,6 +21,9 @@ def test_lower_sync_reset(module):
 
     LowerSyncReset(circuit)
 
+    reset_prim = Implicit('clk').reset._prim()
+
     assert not circuit.sync_reset
     clocked_block = next(iter(circuit.clocked.values()))
-    assert clocked_block.assignments[-1][0] == '?'
+    assert isinstance(clocked_block.assignments[-1], BlockCond)
+    assert clocked_block.assignments[-1].condition == reset_prim
