@@ -118,6 +118,9 @@ class PrimSignal(metaclass=PrimMeta):
     def __iter__(self):
         pass
 
+    def map(self, map_fn):
+        return self
+
     def verilog_expr(self):
         raise RuntimeError('unexpected primitive %r in rvalue' % self)
 
@@ -249,6 +252,10 @@ class PrimReg(PrimValue):
     def __iter__(self):
         yield self.x
 
+    def map(self, map_fn):
+        return type(self)(
+            self.clk, self.en, self.reset, self.reset_mode, map_fn(self.x))
+
 
 class PrimIndex(PrimValue):
     def __init__(self, index, x):
@@ -295,6 +302,9 @@ class PrimIndex(PrimValue):
         yield self.index
         yield self.x
 
+    def map(self, map_fn):
+        return type(self)(map_fn(self.index), map_fn(self.x))
+
     def verilog_expr(self):
         x = (self.x, 'indexable', 0)
         index = (self.index, 'self', 99)
@@ -325,6 +335,9 @@ class PrimNot(PrimValue):
     def __iter__(self):
         yield self.x
 
+    def map(self, map_fn):
+        return type(self)(map_fn(self.x))
+
     def verilog_expr(self):
         x = (self.x, 'context', 1)
         return ('~', x), 'context', 1
@@ -354,6 +367,9 @@ class PrimConcat(PrimValue):
 
     def __iter__(self):
         return iter(self.parts)
+
+    def map(self, map_fn):
+        return type(self)([map_fn(part) for part in self.parts])
 
     def verilog_expr(self):
         tokens = []
@@ -388,6 +404,9 @@ class PrimBinaryOp(PrimValue, metaclass=abc.ABCMeta):
     def __iter__(self):
         yield self.a
         yield self.b
+
+    def map(self, map_fn):
+        return type(self)(map_fn(self.a), map_fn(self.b))
 
     def verilog_expr(self):
         op, prec = self.verilog_op
@@ -460,6 +479,9 @@ class PrimCompareOp(PrimValue, metaclass=abc.ABCMeta):
         yield self.a
         yield self.b
 
+    def map(self, map_fn):
+        return type(self)(map_fn(self.a), map_fn(self.b))
+
     def verilog_expr(self):
         op, prec = self.verilog_op
         return (
@@ -511,6 +533,9 @@ class PrimExtendOp(PrimValue, metaclass=abc.ABCMeta):
     def __iter__(self):
         yield self.x
 
+    def map(self, map_fn):
+        return type(self)(self.width, map_fn(self.x))
+
 
 class PrimSignExt(PrimExtendOp):
     def eval(self, values):
@@ -544,6 +569,14 @@ class PrimSlice(PrimValue):
     def eval(self, values):
         return values(self.x)[self.start:self.start + self.width]
 
+    def simplify(self):
+        if self.start == 0 and self.width == self.x.width:
+            return self.x
+        elif isinstance(self.x, PrimSlice):
+            return PrimSlice(self.start + self.x.start, self.width, self.x.x)
+        else:
+            return self
+
     def simplify_read(self):
         return PrimSlice(self.start, self.width, self.x.simplify_read())
 
@@ -561,6 +594,9 @@ class PrimSlice(PrimValue):
 
     def __iter__(self):
         yield self.x
+
+    def map(self, map_fn):
+        return type(self)(self.start, self.width, map_fn(self.x))
 
     def verilog_expr(self):
         if self.width == 1:
@@ -598,6 +634,9 @@ class PrimRepeat(PrimValue):
 
     def __iter__(self):
         yield self.x
+
+    def map(self, map_fn):
+        return type(self)(self.count, map_fn(self.x))
 
     def verilog_expr(self):
         return (
@@ -646,6 +685,9 @@ class PrimBitIndex(PrimValue):
     def __iter__(self):
         yield self.index
         yield self.x
+
+    def map(self, map_fn):
+        return type(self)(map_fn(self.index), map_fn(self.x))
 
     def verilog_expr(self):
         return (
@@ -714,6 +756,10 @@ class PrimMux(PrimValue):
         yield self.index
         yield from iter(self.ports)
 
+    def map(self, map_fn):
+        return type(self)(
+            map_fn(self.index), [map_fn(port) for port in self.ports])
+
     def verilog_expr(self):
         if self.index.width != 1:
             # TODO implement larger muxes
@@ -759,6 +805,9 @@ class PrimTable(PrimValue):
 
     def __iter__(self):
         return iter(self.table)
+
+    def map(self, map_fn):
+        return type(self)([map_fn(entry) for entry in self.table])
 
 
 class PrimConst(PrimValue):

@@ -63,10 +63,12 @@ class Circuit:
     def _opt_passes():
         from .opt.lower_sync_reset import LowerSyncReset
         from .opt.find_continuous_assignments import FindContinuousAssignments
+        from .opt.reduce_bit_widths import ReduceBitWidths
 
         return [
             LowerSyncReset,
             FindContinuousAssignments,
+            ReduceBitWidths,
         ]
 
     def finalize(self):
@@ -77,6 +79,31 @@ class Circuit:
             opt_pass(self)
 
         self.finalized = True
+
+    def blocks(self):
+        for block_dict in (
+                self.combinational,
+                self.clocked,
+                self.async_reset,
+                self.sync_reset,
+                self.initial):
+            yield from block_dict.values()
+
+    def rvalues(self):
+        for assignments in self.assign.values():
+            for _target, source in assignments:
+                yield source
+
+        for block in self.blocks():
+            yield from block.rvalues()
+
+    def map_rvalues(self, map_fn):
+        for key, assignments in self.assign.items():
+            self.assign[key] = [
+                (lvalue, map_fn(rvalue)) for lvalue, rvalue in assignments]
+
+        for block in self.blocks():
+            block.map_rvalues(map_fn)
 
     def __repr__(self):
         lines = []
@@ -122,6 +149,37 @@ class Block:
 
         position.append(('=', storage, target, source))
         self.storage.add(storage)
+
+    def rvalues(self):
+        def recurse(assignments):
+            for statement in assignments:
+                if statement[0] == '=':
+                    yield statement[3]
+                elif statement[0] == '?':
+                    yield statement[1]
+                    yield from recurse(statement[2])
+                    yield from recurse(statement[3])
+                else:
+                    assert False
+        yield from recurse(self.assignments)
+
+    def map_rvalues(self, map_fn):
+        def recurse(assignments):
+            for i, statement in enumerate(assignments):
+                if statement[0] == '=':
+                    assignments[i] = (
+                        '=', statement[1],
+                        statement[2], map_fn(statement[3]))
+                elif statement[0] == '?':
+                    assignments[i] = (
+                        '?', map_fn(statement[1]),
+                        statement[2],
+                        statement[3])
+                    recurse(statement[2])
+                    recurse(statement[3])
+                else:
+                    assert False
+        recurse(self.assignments)
 
     def __repr__(self):
         return '\n'.join(self._repr_lines())
