@@ -1,7 +1,8 @@
 import io
 from itertools import product
 from collections import OrderedDict
-from .circuit import BlockAssign, BlockCond
+from ..circuit import BlockAssign, BlockCond
+from .templates import VerilogTemplates
 
 
 def _mark_last(i):
@@ -22,7 +23,7 @@ class ModuleSources:
         self.names = set()
 
 
-class Verilog:
+class Verilog(VerilogTemplates):
     def __init__(self, module, module_sources=None):
         # TODO make this adjustable / include parameters
         self.module_name = type(module).__name__
@@ -114,7 +115,7 @@ class Verilog:
             self.named_prims.add(expr)
             self.named_subexprs.append(expr)
         else:
-            tokens, mode, _prec = expr.verilog_expr()
+            tokens, mode, _prec = self._expr_template(expr)
 
             if mode == 'assign':
                 named = True
@@ -135,7 +136,7 @@ class Verilog:
                 self.named_prims.add(expr)
                 self.named_subexprs.append(expr)
 
-            if not expr.verilog_is_simple():
+            if not self._expr_is_simple(expr):
                 self.read_prims.add(expr)
 
     def _emit(self):
@@ -416,7 +417,7 @@ class Verilog:
         if named:
             self._write(self.names.name_prim(prim))
             return
-        tokens, expr_mode, expr_prec = prim.verilog_expr()
+        tokens, expr_mode, expr_prec = self._expr_template(prim)
         parens = '()' if expr_prec > prec else False
         if expr_mode == 'context' and mode == 'no-context':
             parens = '{}'

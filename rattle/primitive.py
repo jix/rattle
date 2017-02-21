@@ -121,13 +121,6 @@ class PrimSignal(metaclass=PrimMeta):
     def map(self, map_fn):
         return self
 
-    def verilog_expr(self):
-        raise RuntimeError('unexpected primitive %r in rvalue' % self)
-
-    def verilog_is_simple(self):
-        # pylint: disable=no-self-use
-        return False
-
 
 class PrimStorage(PrimSignal):
     def __init__(self, module, direction, width, dimensions):
@@ -173,9 +166,6 @@ class PrimStorage(PrimSignal):
 
     def __iter__(self):
         return iter(())
-
-    def verilog_is_simple(self):
-        return True
 
 
 class PrimValue(PrimSignal, metaclass=abc.ABCMeta):
@@ -305,14 +295,6 @@ class PrimIndex(PrimValue):
     def map(self, map_fn):
         return type(self)(map_fn(self.index), map_fn(self.x))
 
-    def verilog_expr(self):
-        x = (self.x, 'indexable', 0)
-        index = (self.index, 'self', 99)
-        return (x, '[', index, ']'), 'indexable', 0
-
-    def verilog_is_simple(self):
-        return isinstance(self.index, PrimConst) and self.x.verilog_is_simple()
-
 
 class PrimNot(PrimValue):
     def __init__(self, x):
@@ -337,13 +319,6 @@ class PrimNot(PrimValue):
 
     def map(self, map_fn):
         return type(self)(map_fn(self.x))
-
-    def verilog_expr(self):
-        x = (self.x, 'context', 1)
-        return ('~', x), 'context', 1
-
-    def verilog_is_simple(self):
-        return True
 
 
 class PrimConcat(PrimValue):
@@ -371,17 +346,6 @@ class PrimConcat(PrimValue):
     def map(self, map_fn):
         return type(self)([map_fn(part) for part in self.parts])
 
-    def verilog_expr(self):
-        tokens = []
-        for part in reversed(self.parts):
-            tokens.append(', ')
-            tokens.append((part, 'self', 99))
-
-        tokens[0] = '{'
-        tokens.append('}')
-
-        return tokens, 'self', 0
-
 
 class PrimBinaryOp(PrimValue, metaclass=abc.ABCMeta):
     def __init__(self, a, b):
@@ -408,51 +372,33 @@ class PrimBinaryOp(PrimValue, metaclass=abc.ABCMeta):
     def map(self, map_fn):
         return type(self)(map_fn(self.a), map_fn(self.b))
 
-    def verilog_expr(self):
-        op, prec = self.verilog_op
-        return (
-            (self.a, 'context', prec + 1), op, (self.b, 'context', prec)
-        ), 'context', prec + 1
-
 
 class PrimAnd(PrimBinaryOp):
-    verilog_op = ' & ', 12
-
     def eval(self, values):
         return values(self.a) & values(self.b)
 
 
 class PrimOr(PrimBinaryOp):
-    verilog_op = ' | ', 16
-
     def eval(self, values):
         return values(self.a) | values(self.b)
 
 
 class PrimXor(PrimBinaryOp):
-    verilog_op = ' ^ ', 14
-
     def eval(self, values):
         return values(self.a) ^ values(self.b)
 
 
 class PrimAdd(PrimBinaryOp):
-    verilog_op = ' + ', 4
-
     def eval(self, values):
         return values(self.a) + values(self.b)
 
 
 class PrimSub(PrimBinaryOp):
-    verilog_op = ' - ', 4
-
     def eval(self, values):
         return values(self.a) - values(self.b)
 
 
 class PrimMul(PrimBinaryOp):
-    verilog_op = ' * ', 2
-
     def eval(self, values):
         return values(self.a) * values(self.b)
 
@@ -482,23 +428,13 @@ class PrimCompareOp(PrimValue, metaclass=abc.ABCMeta):
     def map(self, map_fn):
         return type(self)(map_fn(self.a), map_fn(self.b))
 
-    def verilog_expr(self):
-        op, prec = self.verilog_op
-        return (
-            (self.a, 'context', prec + 1), op, (self.b, 'context', prec)
-        ), 'self', prec + 1
-
 
 class PrimEq(PrimCompareOp):
-    verilog_op = ' == ', 10
-
     def eval(self, values):
         return bv(values(self.a) == values(self.b))
 
 
 class PrimLt(PrimCompareOp):
-    verilog_op = ' < ', 6
-
     def eval(self, values):
         return bv(values(self.a) < values(self.b))
 
@@ -506,12 +442,6 @@ class PrimLt(PrimCompareOp):
 class PrimSignedLt(PrimCompareOp):
     def eval(self, values):
         return bv(values(self.a).sign_wrap() < values(self.b).sign_wrap())
-
-    def verilog_expr(self):
-        return (
-            '$signed(', (self.a, 'context', 99),
-            ') < $signed(', (self.b, 'context', 99), ')'
-        ), 'self', 7
 
 
 class PrimExtendOp(PrimValue, metaclass=abc.ABCMeta):
@@ -541,17 +471,10 @@ class PrimSignExt(PrimExtendOp):
     def eval(self, values):
         return values(self.x).sign_extend(self.width)
 
-    def verilog_expr(self):
-        return ('$signed(', (self.x, 'self', 99), ')'), 'assign', 0
-
 
 class PrimZeroExt(PrimExtendOp):
     def eval(self, values):
         return values(self.x).extend(self.width)
-
-    def verilog_expr(self):
-        # TODO inline ext?
-        return ((self.x, 'no-context', 99), ), 'assign', 0
 
 
 class PrimSlice(PrimValue):
@@ -598,20 +521,6 @@ class PrimSlice(PrimValue):
     def map(self, map_fn):
         return type(self)(self.start, self.width, map_fn(self.x))
 
-    def verilog_expr(self):
-        if self.width == 1:
-            slice_str = '[%i]' % self.start
-        else:
-            slice_str = '[%i:%i]' % (self.start + self.width - 1, self.start)
-
-        return (
-            (self.x, 'named', 0),
-            slice_str
-        ), 'self', 0
-
-    def verilog_is_simple(self):
-        return self.x.verilog_is_simple()
-
 
 class PrimRepeat(PrimValue):
     def __init__(self, count, x):
@@ -637,13 +546,6 @@ class PrimRepeat(PrimValue):
 
     def map(self, map_fn):
         return type(self)(self.count, map_fn(self.x))
-
-    def verilog_expr(self):
-        return (
-            '{%i{' % self.count,
-            (self.x, 'self', 99),
-            '}}'
-        ), 'self', 0
 
 
 class PrimBitIndex(PrimValue):
@@ -688,11 +590,6 @@ class PrimBitIndex(PrimValue):
 
     def map(self, map_fn):
         return type(self)(map_fn(self.index), map_fn(self.x))
-
-    def verilog_expr(self):
-        return (
-            (self.x, 'indexable', 0), '[', (self.index, 'self', 99), ']'
-        ), 'self', 0
 
 
 class PrimMux(PrimValue):
@@ -760,16 +657,6 @@ class PrimMux(PrimValue):
         return type(self)(
             map_fn(self.index), [map_fn(port) for port in self.ports])
 
-    def verilog_expr(self):
-        if self.index.width != 1:
-            # TODO implement larger muxes
-            raise RuntimeError('mux exprs not supported yet')
-        return (
-            (self.index, 'self', 18), ' ? ',
-            (self.ports[1], 'context', 18), ' : ',
-            (self.ports[0], 'context', 19)
-        ), 'self', 19
-
 
 class PrimTable(PrimValue):
     def __init__(self, table):
@@ -832,9 +719,3 @@ class PrimConst(PrimValue):
 
     def __iter__(self):
         return iter(())
-
-    def verilog_expr(self):
-        return ('%i\'b%s' % (self.width, self.value),), 'const', 0
-
-    def verilog_is_simple(self):
-        return True
