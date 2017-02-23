@@ -325,7 +325,7 @@ class PrimConcat(PrimValue):
     # TODO Make PrimConcat writable?
     def __init__(self, parts):
         parts = tuple(part.simplify_read() for part in parts)
-        assert all(part.dimension == () for part in parts)
+        assert all(part.dimensions == () for part in parts)
         super().__init__(
             width=sum(part.width for part in parts))
         self.parts = parts
@@ -334,11 +334,14 @@ class PrimConcat(PrimValue):
         return self.parts
 
     def eval(self, values):
-        return BitVec.concat(values(part) for part in self.parts)
+        return BitVec.concat(*(values(part) for part in self.parts))
 
     @property
     def allowed_readers(self):
-        return self.x.allowed_readers
+        readers = AllSet()
+        for part in self.parts:
+            readers &= part.allowed_readers
+        return readers
 
     def __iter__(self):
         return iter(self.parts)
