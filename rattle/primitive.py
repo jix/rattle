@@ -114,6 +114,10 @@ class PrimSignal(metaclass=PrimMeta):
         raise RuntimeError(
             'primitive signal %r is not a valid storage node for reset' % self)
 
+    @abc.abstractproperty
+    def accessed_storage(self):
+        pass
+
     @abc.abstractmethod
     def __iter__(self):
         pass
@@ -163,6 +167,10 @@ class PrimStorage(PrimSignal):
 
     def add_to_circuit(self, circuit, lvalue, condition, rvalue):
         circuit.add_combinational(self, lvalue, condition, rvalue)
+
+    @property
+    def accessed_storage(self):
+        return frozenset([self])
 
     def __iter__(self):
         return iter(())
@@ -239,6 +247,10 @@ class PrimReg(PrimValue):
             circuit.add_initial(self, lvalue, rvalue)
         # TODO Should we error if no reset is emitted?
 
+    @property
+    def accessed_storage(self):
+        return self.x.accessed_storage
+
     def __iter__(self):
         yield self.x
 
@@ -288,6 +300,10 @@ class PrimIndex(PrimValue):
         x, storage = self.x.lower_lvalue()
         return PrimIndex(self.index, x), storage
 
+    @property
+    def accessed_storage(self):
+        return self.index.accessed_storage | self.x.accessed_storage
+
     def __iter__(self):
         yield self.index
         yield self.x
@@ -313,6 +329,10 @@ class PrimNot(PrimValue):
     @property
     def allowed_readers(self):
         return self.x.allowed_readers
+
+    @property
+    def accessed_storage(self):
+        return self.x.accessed_storage
 
     def __iter__(self):
         yield self.x
@@ -343,6 +363,13 @@ class PrimConcat(PrimValue):
             readers &= part.allowed_readers
         return readers
 
+    @property
+    def accessed_storage(self):
+        accessed = frozenset()
+        for part in self.parts:
+            accessed |= part.accessed_storage
+        return accessed
+
     def __iter__(self):
         return iter(self.parts)
 
@@ -367,6 +394,10 @@ class PrimBinaryOp(PrimValue, metaclass=abc.ABCMeta):
     @property
     def allowed_readers(self):
         return self.a.allowed_readers & self.b.allowed_readers
+
+    @property
+    def accessed_storage(self):
+        return self.a.accessed_storage | self.b.accessed_storage
 
     def __iter__(self):
         yield self.a
@@ -424,6 +455,10 @@ class PrimCompareOp(PrimValue, metaclass=abc.ABCMeta):
     def allowed_readers(self):
         return self.a.allowed_readers & self.b.allowed_readers
 
+    @property
+    def accessed_storage(self):
+        return self.a.accessed_storage | self.b.accessed_storage
+
     def __iter__(self):
         yield self.a
         yield self.b
@@ -462,6 +497,10 @@ class PrimExtendOp(PrimValue, metaclass=abc.ABCMeta):
     @property
     def allowed_readers(self):
         return self.x.allowed_readers
+
+    @property
+    def accessed_storage(self):
+        return self.x.accessed_storage
 
     def __iter__(self):
         yield self.x
@@ -514,6 +553,10 @@ class PrimSlice(PrimValue):
     def allowed_writers(self):
         return self.x.allowed_writers
 
+    @property
+    def accessed_storage(self):
+        return self.x.accessed_storage
+
     def lower_lvalue(self):
         x, storage = self.x.lower_lvalue()
         return PrimSlice(self.start, self.width, x), storage
@@ -543,6 +586,10 @@ class PrimRepeat(PrimValue):
     @property
     def allowed_readers(self):
         return self.x.allowed_readers
+
+    @property
+    def accessed_storage(self):
+        return self.x.accessed_storage
 
     def __iter__(self):
         yield self.x
@@ -578,6 +625,10 @@ class PrimBitIndex(PrimValue):
     @property
     def allowed_writers(self):
         return self.index.allowed_readers & self.x.allowed_writers
+
+    @property
+    def accessed_storage(self):
+        return self.index.accessed_storage | self.x.accessed_storage
 
     def lower_lvalue(self):
         # TODO Lower dynamic indexing of a slice into offset dynamic indexing
@@ -646,6 +697,13 @@ class PrimMux(PrimValue):
             writers &= port.allowed_writers
         return writers
 
+    @property
+    def accessed_storage(self):
+        accessed = frozenset()
+        for port in self.ports:
+            accessed &= port.accessed_storage
+        return accessed
+
     def split_scalar(self, condition, rvalue):
         for i, port in enumerate(self.ports):
             index = PrimConst(BitVec(self.index.width, i))
@@ -693,6 +751,13 @@ class PrimTable(PrimValue):
             writers &= entry.allowed_writers
         return writers
 
+    @property
+    def accessed_storage(self):
+        accessed = frozenset()
+        for entry in self.table:
+            accessed &= entry.accessed_storage
+        return accessed
+
     def __iter__(self):
         return iter(self.table)
 
@@ -719,6 +784,10 @@ class PrimConst(PrimValue):
     @property
     def allowed_readers(self):
         return AllSet()
+
+    @property
+    def accessed_storage(self):
+        return frozenset()
 
     def __iter__(self):
         return iter(())

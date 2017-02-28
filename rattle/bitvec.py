@@ -225,6 +225,12 @@ class BitVec:
             signext(self.width, self.value),
             signext(self.width, self.mask))
 
+    def same_as(self, other):
+        return (
+            self.width == other.width and
+            self.value == other.value and
+            self.mask == other.mask)
+
 
 class XClass:
     def __hash__(self):

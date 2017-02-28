@@ -192,6 +192,15 @@ class Block:
                     assert False
         recurse(self.assignments)
 
+    @property
+    def accessed_storage(self):
+        accessed = frozenset()
+
+        for rvalue in self.rvalues():
+            accessed |= rvalue.accessed_storage
+
+        return accessed
+
     def __repr__(self):
         return '\n'.join(self._repr_lines())
 
