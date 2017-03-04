@@ -23,6 +23,7 @@ class SimEngine:
         ]
 
         self._change_enqueues = {}
+        self._initial_blocks = []
 
         self._values = {}
 
@@ -45,7 +46,8 @@ class SimEngine:
         self._clocked_assign_queue.clear()
         self._old_clock_values = {}
 
-        # TODO initial
+        for block in self._initial_blocks:
+            self._apply_pokes(self._eval_block(block))
 
         for enqueues in self._change_enqueues.values():
             for queue, callback, params in enqueues:
@@ -89,6 +91,9 @@ class SimEngine:
         for clock, block in circuit.clocked.items():
             self._add_clocked(clock, block)
 
+        for storage, block in circuit.initial.items():
+            self._add_initial(storage, block)
+
         if circuit.async_reset:
             raise RuntimeError('Simulation of async reset not supported yet')
 
@@ -117,6 +122,9 @@ class SimEngine:
         enqueues = self._change_enqueues.setdefault(clock, [])
         enqueues.append(
             (self._clocked_eval_queue, self._eval_clocked, (clock, block)))
+
+    def _add_initial(self, storage, block):
+        self._initial_blocks.append(block)
 
     @staticmethod
     def _enqueue(queue, callback, params):
