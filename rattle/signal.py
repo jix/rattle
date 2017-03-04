@@ -103,6 +103,9 @@ class Signal(metaclass=abc.ABCMeta):
 
         return self._prim(key).eval(raise_fn)
 
+    def peek(self):
+        return context.current().sim.peek(self)
+
 
 _flip_dir = {'input': 'output', 'output': 'input'}
 
