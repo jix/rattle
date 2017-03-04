@@ -154,7 +154,7 @@ class SimEngine:
 
     def _eval_assign(self, params):
         storage, lvalue, rvalue = params
-        self._poke(storage, lvalue, self._peek(rvalue))
+        self.poke(storage, lvalue, self.peek(rvalue))
 
     def _eval_combinational(self, block):
         pokes = self._eval_block(block)
@@ -163,7 +163,7 @@ class SimEngine:
     def _eval_clocked(self, params):
         clock, block = params
 
-        clock_value = self._peek(clock)[0]
+        clock_value = self.peek(clock)[0]
         old_clock_value = self._old_clock_values.get(clock, X)
         self._old_clock_values[clock] = clock_value
 
@@ -172,11 +172,11 @@ class SimEngine:
 
             self._clocked_assign_queue[object()] = (self._apply_pokes, pokes)
 
-    def _peek(self, rvalue, indices=()):
+    def peek(self, rvalue, indices=()):
         if rvalue in self._storage_prims:
             value = self._values[rvalue]
         elif isinstance(rvalue, PrimIndex):
-            index = self._peek(rvalue.index)
+            index = self.peek(rvalue.index)
 
             res = None
             index_range = rvalue.x.dimensions[len(indices)]
@@ -184,21 +184,21 @@ class SimEngine:
                 if i >= index_range:
                     res = BitVec(rvalue.x.width, 0, -1)
                     break
-                value = self._peek(rvalue.x, indices + (i,))
+                value = self.peek(rvalue.x, indices + (i,))
                 if res is None:
                     res = value
                 else:
                     res = res.combine(value)
             return res
         else:
-            value = rvalue.eval(self._peek)
+            value = rvalue.eval(self.peek)
 
         for idx in reversed(indices):
             value = value[idx]
 
         return value
 
-    def _poke(
+    def poke(
             self, storage, lvalue, rvalue,
             indices=(), xpoke=False, shadow=None):
         if lvalue in self._storage_prims:
@@ -211,7 +211,7 @@ class SimEngine:
                         self._shadow_peek(shadow, lvalue, indices))
                 shadow[(storage, indices)] = rvalue
         elif isinstance(lvalue, PrimIndex):
-            index = self._peek(lvalue.index)
+            index = self.peek(lvalue.index)
             index_range = lvalue.x.dimensions[len(indices)]
             if index.mask != 0:
                 for i in index.values():
@@ -219,7 +219,7 @@ class SimEngine:
                         self._poke_anywhere(
                             storage, lvalue, rvalue, indices, shadow)
                         break
-                    self._poke(
+                    self.poke(
                         storage, lvalue.x, rvalue, indices + (i,),
                         xpoke=True, shadow=shadow)
             else:
@@ -228,7 +228,7 @@ class SimEngine:
                     self._poke_anywhere(
                         storage, lvalue, rvalue, indices, shadow)
                 else:
-                    self._poke(
+                    self.poke(
                         storage, lvalue.x, rvalue, indices + (index,),
                         xpoke=xpoke, shadow=shadow)
         else:
@@ -239,7 +239,7 @@ class SimEngine:
         assert isinstance(lvalue, PrimIndex)
         index_range = lvalue.x.dimensions[len(indices)]
         for i in range(index_range):
-            self._poke(storage, lvalue.x, rvalue, indices + (i,), True, shadow)
+            self.poke(storage, lvalue.x, rvalue, indices + (i,), True, shadow)
 
     def _direct_poke(self, storage, rvalue, indices, xpoke):
         key = storage
@@ -261,7 +261,7 @@ class SimEngine:
         try:
             return shadow[(storage, indices)]
         except KeyError:
-            return self._peek(storage, indices)
+            return self.peek(storage, indices)
 
     def _eval_block(self, block):
         shadow = OrderedDict()
@@ -273,11 +273,11 @@ class SimEngine:
     def _eval_block_assignments(self, assignments, shadow):
         for statement in assignments:
             if isinstance(statement, BlockAssign):
-                value = self._peek(statement.rvalue)
-                self._poke(
+                value = self.peek(statement.rvalue)
+                self.poke(
                     statement.storage, statement.lvalue, value, shadow=shadow)
             elif isinstance(statement, BlockCond):
-                condition_value = self._peek(statement.condition)[0]
+                condition_value = self.peek(statement.condition)[0]
                 if condition_value is X:
                     shadow_copy = OrderedDict(shadow)
                     self._eval_block_assignments(statement.true, shadow)
@@ -297,14 +297,13 @@ class SimEngine:
             try:
                 value_a = shadow_a[key]
             except KeyError:
-                value_a = self._peek(*key)
+                value_a = self.peek(*key)
             shadow_a[key] = value_a.combine(value_b)
 
         for key, value_a in shadow_a.items():
             if key not in shadow_b:
-                shadow_a[key] = value_a.combine(self._peek(*key))
+                shadow_a[key] = value_a.combine(self.peek(*key))
 
     def _apply_pokes(self, pokes):
         for (storage, indices), rvalue in pokes.items():
             self._direct_poke(storage, rvalue, indices, False)
-
