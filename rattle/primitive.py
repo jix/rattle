@@ -114,6 +114,10 @@ class PrimSignal(metaclass=PrimMeta):
         raise RuntimeError(
             'primitive signal %r is not a valid storage node for reset' % self)
 
+    def poke_to_sim(self, sim, lvalue, rvalue, xpoke):
+        raise RuntimeError(
+            'primitive signal %r cannot be written in simulation' % self)
+
     @abc.abstractproperty
     def accessed_storage(self):
         pass
@@ -158,7 +162,7 @@ class PrimStorage(PrimSignal):
             if self.module.parent is not None:
                 return frozenset([self.module.parent])
             else:
-                return frozenset()
+                return frozenset(['simulation'])
         else:
             return frozenset([self.module])
 
@@ -167,6 +171,9 @@ class PrimStorage(PrimSignal):
 
     def add_to_circuit(self, circuit, lvalue, condition, rvalue):
         circuit.add_combinational(self, lvalue, condition, rvalue)
+
+    def poke_to_sim(self, sim, lvalue, rvalue, xpoke):
+        sim._poke_now(self, lvalue, rvalue, xpoke)
 
     @property
     def accessed_storage(self):
@@ -246,6 +253,9 @@ class PrimReg(PrimValue):
         if self.reset_mode in ('init', 'sync+init', 'async+init'):
             circuit.add_initial(self, lvalue, rvalue)
         # TODO Should we error if no reset is emitted?
+
+    def poke_to_sim(self, sim, lvalue, rvalue, xpoke):
+        sim._poke_delayed(self, lvalue, rvalue, xpoke)
 
     @property
     def accessed_storage(self):

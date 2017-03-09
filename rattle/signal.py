@@ -24,7 +24,11 @@ class Signal(metaclass=abc.ABCMeta):
         return self._signal_type
 
     def assign(self, value):
-        module_data = context.current().module._module_data
+        ctx = context.current()
+        if ctx.sim_active:
+            self._sim_assign(value, ctx.sim)
+            return
+        module_data = ctx.module._module_data
         condition = module_data.condition_stack.current_conditions()
         is_reset = module_data.condition_stack.is_reset()
         value = self.signal_type.convert(value, implicit=True)
@@ -53,6 +57,16 @@ class Signal(metaclass=abc.ABCMeta):
             else:
                 if module not in prim.allowed_readers:
                     raise InvalidSignalRead  # TODO Message
+
+    def _sim_assign(self, value, sim_context):
+        value = self.signal_type.convert(value, implicit=True)
+
+        for key, (flip, *_) in self.signal_type._prim_shape.items():
+            lvalue, rvalue = self._prims[key], value._prims[key]
+            if flip:
+                lvalue, rvalue = rvalue, lvalue
+
+            sim_context._poke_prim(lvalue, rvalue)
 
     def __setitem__(self, key, value):
         if key == slice(None, None, None):

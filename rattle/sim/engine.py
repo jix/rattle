@@ -15,14 +15,11 @@ class SimEngine:
         self._clocked_eval_queue = OrderedDict()
 
         self._clocked_assign_queue = OrderedDict()
-
-        self._queue_order = [
-            self._assign_queue,
-            self._combinational_queue,
-            self._clocked_eval_queue,
-        ]
+        self._delayed_assign_queue = OrderedDict()
 
         self._change_enqueues = {}
+        self._user_callbacks = {}
+
         self._initial_blocks = []
 
         self._values = {}
@@ -38,13 +35,17 @@ class SimEngine:
         self._values = {
             storage: self._xval(storage)
             for storage in self._storage_prims}
+
         self._time = 0
 
-        for queue in self._queue_order:
-            queue.clear()
-
+        self._assign_queue.clear()
+        self._combinational_queue.clear()
+        self._clocked_eval_queue.clear()
         self._clocked_assign_queue.clear()
+        self._delayed_assign_queue.clear()
         self._old_clock_values = {}
+
+        self._user_callbacks.clear()
 
         for block in self._initial_blocks:
             self._apply_pokes(self._eval_block(block))
@@ -52,6 +53,12 @@ class SimEngine:
         for enqueues in self._change_enqueues.values():
             for queue, callback, params in enqueues:
                 self._enqueue(queue, callback, params)
+
+        self.step_combinational()
+
+    @property
+    def time(self):
+        return self._time
 
     @staticmethod
     def _xval(storage):
@@ -134,23 +141,37 @@ class SimEngine:
         except KeyError:
             queue[key] = key
 
-    def _step_queues(self):
+    def step_combinational(self):
         while True:
-            for queue in self._queue_order:
-                if queue:
-                    break
+            # TODO configurable timeout
+            if self._assign_queue:
+                self._step_queue(self._assign_queue)
+                continue
+            if self._combinational_queue:
+                self._step_queue(self._combinational_queue)
+                continue
+            break
 
-            if not queue:
-                if self._clocked_assign_queue:
-                    self._assign_queue.update(self._clocked_assign_queue)
-                    self._clocked_assign_queue.clear()
-                    continue
-                return False
+    def step(self):
+        self.step_combinational()
+        while self._clocked_eval_queue:
+            self._step_queue(self._clocked_eval_queue)
+        stepped = bool(
+            self._clocked_assign_queue or self._delayed_assign_queue)
+        self._assign_queue.update(self._clocked_assign_queue)
+        self._assign_queue.update(self._delayed_assign_queue)
+        self._clocked_assign_queue.clear()
+        self._delayed_assign_queue.clear()
+        self.step_combinational()
+        return stepped
 
-            _key, (callback, parameters) = queue.popitem(last=False)
-            callback(parameters)
+    def advance_time(self, step):
+        self._time += step
 
-            return True
+    @staticmethod
+    def _step_queue(queue):
+        _key, (callback, parameters) = queue.popitem(last=False)
+        callback(parameters)
 
     def _eval_assign(self, params):
         storage, lvalue, rvalue = params
@@ -256,6 +277,8 @@ class SimEngine:
         if not old_value.same_as(rvalue):
             for enqueue in self._change_enqueues.get(storage, ()):
                 self._enqueue(*enqueue)
+            for key, callback in self._user_callbacks.get(storage, {}).items():
+                callback(key, storage)
 
     def _shadow_peek(self, shadow, storage, indices):
         try:
@@ -307,3 +330,22 @@ class SimEngine:
     def _apply_pokes(self, pokes):
         for (storage, indices), rvalue in pokes.items():
             self._direct_poke(storage, rvalue, indices, False)
+
+    def poke_delayed(self, storage, lvalue, rvalue, xpoke):
+        shadow = OrderedDict()
+        self.poke(storage, lvalue, rvalue, xpoke=xpoke, shadow=shadow)
+        self._delayed_assign_queue[object()] = (self._apply_pokes, shadow)
+
+    def add_callback(self, storage, key, callback):
+        try:
+            callbacks = self._user_callbacks[storage]
+        except KeyError:
+            callbacks = self._user_callbacks[storage] = OrderedDict()
+        callbacks[key] = callback
+
+    def remove_callback(self, storage, key, callback):
+        try:
+            del self._user_callbacks[storage][key]
+            return True
+        except KeyError:
+            return False
