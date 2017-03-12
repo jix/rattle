@@ -29,6 +29,7 @@ class SimContext:
         self._pending_threads = OrderedDict()
 
         self._activity = False
+        self._shadow = None
 
     def activate(self):
         return context.current().activate_sim_context(self)
@@ -81,13 +82,10 @@ class SimContext:
                 break
         return result
 
-    def _poke_now(self, storage, lvalue, rvalue, xpoke):
+    def _poke(self, storage, lvalue, rvalue, xpoke):
         self._engine.poke(
-            storage.simplify_read(), lvalue, rvalue, xpoke=xpoke)
-
-    def _poke_delayed(self, storage, lvalue, rvalue, xpoke):
-        self._engine.poke_delayed(
-            storage.simplify_read(), lvalue, rvalue, xpoke=xpoke)
+            storage.simplify_read(), lvalue, rvalue,
+            xpoke=xpoke, shadow=self._shadow)
 
     def thread(self, action, events=None):
         events = self._prepare_events(events)
@@ -170,9 +168,15 @@ class SimContext:
         self._activity = False
         self._trigger_event(TimeEvent(self._engine.time))
         self._step_combinational()
+
+        self._shadow = OrderedDict()
         self._trigger_edges()
-        self._step_combinational()
+        self._trigger_threads()
+        self._engine.poke_delayed(self._shadow)
+        self._shadow = None
+
         self._activity |= self._engine.step()
+
         self._step_combinational()
         return self._activity
 

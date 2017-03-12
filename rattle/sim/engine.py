@@ -190,8 +190,7 @@ class SimEngine:
 
         if old_clock_value is False and clock_value is True:
             pokes = self._eval_block(block)
-
-            self._clocked_assign_queue[object()] = (self._apply_pokes, pokes)
+            self.poke_delayed(pokes)
 
     def peek(self, rvalue, indices=()):
         if rvalue in self._storage_prims:
@@ -331,10 +330,9 @@ class SimEngine:
         for (storage, indices), rvalue in pokes.items():
             self._direct_poke(storage, rvalue, indices, False)
 
-    def poke_delayed(self, storage, lvalue, rvalue, xpoke):
-        shadow = OrderedDict()
-        self.poke(storage, lvalue, rvalue, xpoke=xpoke, shadow=shadow)
-        self._delayed_assign_queue[object()] = (self._apply_pokes, shadow)
+    def poke_delayed(self, pokes):
+        if pokes:
+            self._delayed_assign_queue[object()] = (self._apply_pokes, pokes)
 
     def add_callback(self, storage, key, callback):
         try:

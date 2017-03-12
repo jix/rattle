@@ -173,7 +173,7 @@ class PrimStorage(PrimSignal):
         circuit.add_combinational(self, lvalue, condition, rvalue)
 
     def poke_to_sim(self, sim, lvalue, rvalue, xpoke):
-        sim._poke_now(self, lvalue, rvalue, xpoke)
+        sim._poke(self, lvalue, rvalue, xpoke)
 
     @property
     def accessed_storage(self):
@@ -255,7 +255,7 @@ class PrimReg(PrimValue):
         # TODO Should we error if no reset is emitted?
 
     def poke_to_sim(self, sim, lvalue, rvalue, xpoke):
-        sim._poke_delayed(self, lvalue, rvalue, xpoke)
+        sim._poke(self, lvalue, rvalue, xpoke)
 
     @property
     def accessed_storage(self):
