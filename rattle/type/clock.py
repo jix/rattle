@@ -17,6 +17,9 @@ class Clock(Bundle):
         else:
             reset = bool(reset)
 
+        if reset is True:
+            reset = 'sync'  # pylint: disable=redefined-variable-type
+
         self._reset = reset
         self._gated = gated
 

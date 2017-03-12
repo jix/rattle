@@ -217,9 +217,9 @@ class PrimReg(PrimValue):
         assert isinstance(x, PrimStorage)
 
         super().__init__(width=x.width, dimensions=x.dimensions)
-        self.clk = clk
-        self.en = en
-        self.reset = reset
+        self.clk = clk.simplify_read()
+        self.en = en.simplify_read() if en is not None else None
+        self.reset = reset.simplify_read() if reset is not None else None
         self.reset_mode = reset_mode
         self.x = x
 

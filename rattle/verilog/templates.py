@@ -7,7 +7,7 @@ class VerilogTemplates:
     # pylint: disable=function-redefined
     @visitor
     def _expr_template(self, expr):
-        raise RuntimeError('no verilog template for primitive %r' % self)
+        raise RuntimeError('no verilog template for primitive %r' % expr)
 
     @_expr_template.on(PrimIndex)
     def _expr_template(self, expr):

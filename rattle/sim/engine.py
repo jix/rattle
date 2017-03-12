@@ -119,16 +119,17 @@ class SimEngine:
             self._combinational_queue, self._eval_combinational,
             block)
         for accessed_storage in block.accessed_storage:
-            enqueues = self._change_enqueues.setdefault(
-                accessed_storage, [])
-
+            enqueues = self._change_enqueues.setdefault(accessed_storage, [])
             enqueues.append(enqueue)
 
     def _add_clocked(self, clock, block):
-        assert clock in self._storage_prims
-        enqueues = self._change_enqueues.setdefault(clock, [])
-        enqueues.append(
-            (self._clocked_eval_queue, self._eval_clocked, (clock, block)))
+        enqueue = (
+            self._clocked_eval_queue, self._eval_clocked,
+            (clock, block))
+
+        for accessed_storage in clock.accessed_storage:
+            enqueues = self._change_enqueues.setdefault(accessed_storage, [])
+            enqueues.append(enqueue)
 
     def _add_initial(self, storage, block):
         self._initial_blocks.append(block)
