@@ -112,6 +112,11 @@ class Signal(metaclass=abc.ABCMeta):
         return self._prims[key]
 
     def _prim_value(self, key=()):
+        current_context = context.current()
+        if current_context.sim_active:
+            return current_context.sim._engine.peek(
+                self._prim(key).simplify_read())
+
         def raise_fn(prim):
             raise ValueNotAvailable  # TODO Message
 
