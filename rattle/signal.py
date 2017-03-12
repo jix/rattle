@@ -125,6 +125,14 @@ class Signal(metaclass=abc.ABCMeta):
     def peek(self):
         return context.current().sim.peek(self)
 
+    @property
+    def flipped(self):
+        from .type import Flip
+        return Flip[self]
+
+    def _bundle_field_access(self):
+        return self
+
 
 _flip_dir = {'input': 'output', 'output': 'input'}
 

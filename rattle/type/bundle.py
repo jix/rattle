@@ -74,7 +74,7 @@ class BundleSignal(Signal):
         return item_type._from_prims({
             k[1:]: v
             for k, v in self._prims.items()
-            if k[0] == key})
+            if k[0] == key})._bundle_field_access()
 
     def __getattr__(self, name):
         try:
