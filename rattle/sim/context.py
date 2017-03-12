@@ -6,6 +6,8 @@ from ..bitmath import log2up
 from ..bitvec import BitVec, XClass, xnot
 from ..primitive import PrimConst, PrimTable, PrimIndex
 from ..error import InvalidSignalAssignment
+from ..signal import Signal
+from ..type import Clock
 from .. import context
 
 
@@ -143,7 +145,13 @@ class SimContext:
             events = (SettledEvent(),)
         elif not isinstance(events, tuple):
             events = (events,)
-        return tuple(map(self._prepare_event, events))
+
+        split_events = []
+
+        for event in events:
+            split_events.extend(self._prepare_event(event).split_event())
+
+        return split_events
 
     def _prepare_event(self, event):
         if isinstance(event, SimEvent):
@@ -153,6 +161,12 @@ class SimContext:
                 # TODO better error
                 raise RuntimeError("negative time delay")
             return TimeEvent(self._engine.time + event)
+        elif isinstance(event, Signal):
+            if isinstance(event.signal_type, Clock):
+                return ClockEvent(event)
+            else:
+                return ChangeEvent(event)
+        raise ValueError("unknown event %r" % event)
 
     def _step_combinational(self):
         while True:
@@ -194,13 +208,13 @@ class SimContext:
 
     def _register_new_events(self):
         for event in self._new_events:
-            if isinstance(event, ChangeEvent):
+            if isinstance(event, PrimChangeEvent):
                 self._old_values[event] = (
                     self._peek_prim(event.prim))
                 for storage in event.prim.accessed_storage:
                     self._engine.add_callback(
                         storage, event, self._change_callback)
-            elif isinstance(event, EdgeEvent):
+            elif isinstance(event, PrimEdgeEvent):
                 self._old_values[event] = (
                     self._peek_prim(event.prim))
                 for storage in event.prim.accessed_storage:
@@ -226,7 +240,7 @@ class SimContext:
         for event in self._potential_changes:
             new_value = self._peek_prim(event.prim)
             old_value = self._old_values[event]
-            if self._value_changed(new_value, old_value):
+            if not self._value_same_as(new_value, old_value):
                 self._old_values[event] = new_value
                 self._trigger_event(event)
         self._potential_changes.clear()
@@ -235,18 +249,23 @@ class SimContext:
         for event in self._potential_edges:
             new_value = self._peek_prim(event.prim)
             old_value = self._old_values[event]
-            if self._value_changed(new_value, old_value):
+            if not self._value_same_as(new_value, old_value):
                 self._old_values[event] = new_value
                 if (
-                        not self._value_changed(event.old, old_value) and
-                        not self._value_changed(event.new, new_value)):
-                    self._trigger_event(event)
+                        old_value.value.same_as(BitVec(1, 0)) and
+                        new_value.value.same_as(BitVec(1, 1))):
+                    if event.en is None:
+                        self._trigger_event(event)
+                    else:
+                        en_value = self._peek_prim(event.en)
+                        if en_value.value.same_as(BitVec(1, 1)):
+                            self._trigger_event(event)
         self._potential_edges.clear()
 
-    def _value_changed(self, a, b):
+    def _value_same_as(self, a, b):
         if isinstance(a, PrimConst):
-            return not a.value.same_as(b.value)
-        return any(self._value_changed(x, y) for x, y in zip(a.table, b.table))
+            return a.value.same_as(b.value)
+        return all(self._value_same_as(x, y) for x, y in zip(a.table, b.table))
 
     def _trigger_event(self, event):
         for thread in self._watched_events.get(event, ()):

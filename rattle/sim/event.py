@@ -1,8 +1,10 @@
 import abc
+from ..type import Clock
 
 
 class SimEvent(metaclass=abc.ABCMeta):
-    pass
+    def split_event(self):
+        yield self
 
 
 class SimBasicEvent(SimEvent, metaclass=abc.ABCMeta):
@@ -32,7 +34,7 @@ class TimeEvent(SimBasicEvent):
         return (self.timestamp,)
 
 
-class WatchEvent(SimBasicEvent, metaclass=abc.ABCMeta):
+class PrimWatchEvent(SimBasicEvent, metaclass=abc.ABCMeta):
     def __init__(self, prim):
         self.prim = prim
 
@@ -40,14 +42,46 @@ class WatchEvent(SimBasicEvent, metaclass=abc.ABCMeta):
         return (self.prim,)
 
 
-class ChangeEvent(WatchEvent):
+class PrimChangeEvent(PrimWatchEvent):
     pass
 
 
-class EdgeEvent(WatchEvent):
-    def __init__(self, prim, old, new):
+class PrimEdgeEvent(PrimWatchEvent):
+    def __init__(self, prim, en=None):
         super().__init__(prim)
-        self.old, self.new = old, new
+        assert prim.shape == (1,)
+        assert en is None or en.shape == (1,)
+        self.en = en
 
     def _tuple(self):
-        return (self.prim, self.old, self.new)
+        return (self.prim, self.en)
+
+
+class ChangeEvent(SimBasicEvent):
+    def __init__(self, signal):
+        self.signal = signal
+
+    def _tuple(self):
+        return (self.signal,)
+
+    def split_event(self):
+        for prim in self.signal._prims.values():
+            yield PrimChangeEvent(prim.simplify_read())
+
+
+class ClockEvent(SimBasicEvent):
+    def __init__(self, signal):
+        # TODO use exceptions instead of asserts here
+        assert isinstance(signal.signal_type, Clock)
+        self.signal = signal
+
+    def _tuple(self):
+        return (self.signal,)
+
+    def split_event(self):
+        if self.signal.signal_type.gated:
+            yield PrimEdgeEvent(
+                self.signal.clk._prim().simplify_read(),
+                self.signal.en._prim().simplify_read())
+        else:
+            yield PrimEdgeEvent(self.signal.clk._prim().simplify_read())
