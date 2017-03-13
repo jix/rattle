@@ -33,6 +33,10 @@ class SimContext:
         self._activity = False
         self._shadow = None
 
+        self._busy_count = 0
+        self._idle = False
+        self._stop = False
+
     def activate(self):
         return context.current().activate_sim_context(self)
 
@@ -194,8 +198,16 @@ class SimContext:
         self._step_combinational()
         return self._activity
 
-    def run(self, timeout):
-        while self._engine.time < timeout:
+    def run(self, timeout=None, stop_on_idle=True):
+        if timeout:
+            timeout += self._engine.time
+        self._idle = False
+        self._stop = False
+        while not self._stop:
+            if timeout and self._engine.time >= timeout:
+                break
+            if stop_on_idle and self._idle:
+                break
             while self._step():
                 pass
             try:
@@ -205,6 +217,9 @@ class SimContext:
             step = next_time - self._engine.time
             assert step > 0
             self._engine.advance_time(step)
+
+    def stop(self):
+        self._stop = True
 
     def _register_new_events(self):
         for event in self._new_events:
@@ -279,7 +294,36 @@ class SimContext:
         self._pending_threads.clear()
         return True
 
+    def busy(self):
+        return BusyToken(self)
+
+    def _acquire_busy(self):
+        self._busy_count += 1
+        self._idle = False
+
+    def _release_busy(self):
+        self._busy_count -= 1
+        self._idle = not self._busy_count
+
 
 class SimThread:
     def __init__(self, action, events):
         self._action, self._events = action, events
+
+
+class BusyToken:
+    def __init__(self, sim):
+        self._sim = sim
+        sim._acquire_busy()
+
+    def done(self):
+        if self._sim is None:
+            raise RuntimeError('busy token already released')
+        self._sim._release_busy()
+        self._sim = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.done()
