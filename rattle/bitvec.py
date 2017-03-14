@@ -231,6 +231,13 @@ class BitVec:
             self.value == other.value and
             self.mask == other.mask)
 
+    def updated_at(self, pos, other):
+        update_mask = bitmask(pos + other.width, pos)
+        return BitVec(
+            self.width,
+            (self.value & ~update_mask) | (other.value << pos),
+            (self.mask & ~update_mask) | (other.mask << pos))
+
 
 class XClass:
     def __hash__(self):

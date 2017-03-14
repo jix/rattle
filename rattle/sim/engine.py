@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from ..primitive import PrimIndex
+from ..primitive import PrimIndex, PrimSlice
 from ..bitvec import BitVec, X
 from ..circuit import BlockAssign, BlockCond
 
@@ -220,16 +220,19 @@ class SimEngine:
         return value
 
     def poke(
-            self, storage, lvalue, rvalue,
-            indices=(), xpoke=False, shadow=None):
+            self, storage, lvalue, rvalue, *,
+            indices=(), bitslice=None, xpoke=False, shadow=None):
         if lvalue in self._storage_prims:
             assert storage == lvalue
             if shadow is None:
-                self._direct_poke(storage, rvalue, indices, xpoke)
+                self._direct_poke(storage, rvalue, indices, bitslice, xpoke)
             else:
+                if xpoke or bitslice is not None:
+                    old_value = self._shadow_peek(shadow, lvalue, indices)
+                if bitslice is not None:
+                    rvalue = old_value.updated_at(bitslice, rvalue)
                 if xpoke:
-                    rvalue = rvalue.combine(
-                        self._shadow_peek(shadow, lvalue, indices))
+                    rvalue = rvalue.combine(old_value)
                 shadow[(storage, indices)] = rvalue
         elif isinstance(lvalue, PrimIndex):
             index = self.peek(lvalue.index)
@@ -241,7 +244,9 @@ class SimEngine:
                             storage, lvalue, rvalue, indices, shadow)
                         break
                     self.poke(
-                        storage, lvalue.x, rvalue, indices + (i,),
+                        storage, lvalue.x, rvalue,
+                        indices=indices + (i,),
+                        bitslice=bitslice,
                         xpoke=True, shadow=shadow)
             else:
                 index = index.value
@@ -250,19 +255,30 @@ class SimEngine:
                         storage, lvalue, rvalue, indices, shadow)
                 else:
                     self.poke(
-                        storage, lvalue.x, rvalue, indices + (index,),
+                        storage, lvalue.x, rvalue,
+                        indices=indices + (index,),
+                        bitslice=bitslice,
                         xpoke=xpoke, shadow=shadow)
+        elif isinstance(lvalue, PrimSlice):
+            self.poke(
+                storage, lvalue.x, rvalue,
+                indices=indices,
+                bitslice=lvalue.start,
+                xpoke=xpoke, shadow=shadow)
         else:
-            # TODO Slices
+            # TODO bit indexing
             raise RuntimeError('unexpected lvalue')
 
     def _poke_anywhere(self, storage, lvalue, rvalue, indices, shadow):
         assert isinstance(lvalue, PrimIndex)
         index_range = lvalue.x.dimensions[len(indices)]
         for i in range(index_range):
-            self.poke(storage, lvalue.x, rvalue, indices + (i,), True, shadow)
+            self.poke(
+                storage, lvalue.x, rvalue,
+                indices=indices + (i,),
+                xpoke=True, shadow=shadow)
 
-    def _direct_poke(self, storage, rvalue, indices, xpoke):
+    def _direct_poke(self, storage, rvalue, indices, bitslice, xpoke):
         key = storage
         values = self._values
 
@@ -271,6 +287,10 @@ class SimEngine:
             key = idx
 
         old_value = values[key]
+
+        if bitslice is not None:
+            rvalue = old_value.updated_at(bitslice, rvalue)
+
         if xpoke:
             rvalue = rvalue.combine(old_value)
         values[key] = rvalue
@@ -329,7 +349,7 @@ class SimEngine:
 
     def _apply_pokes(self, pokes):
         for (storage, indices), rvalue in pokes.items():
-            self._direct_poke(storage, rvalue, indices, False)
+            self._direct_poke(storage, rvalue, indices, None, False)
 
     def poke_delayed(self, pokes):
         if pokes:
