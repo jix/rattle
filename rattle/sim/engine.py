@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from ..primitive import PrimIndex, PrimSlice
+from ..primitive import PrimIndex, PrimBitIndex, PrimSlice
 from ..bitvec import BitVec, X
 from ..circuit import BlockAssign, BlockCond
 
@@ -265,8 +265,36 @@ class SimEngine:
                 indices=indices,
                 bitslice=lvalue.start,
                 xpoke=xpoke, shadow=shadow)
+        elif isinstance(lvalue, PrimBitIndex):
+            index = self.peek(lvalue.index)
+            index_range = lvalue.x.width
+            if index.mask != 0:
+                for i in index.values():
+                    if i >= index_range:
+                        self.poke(
+                            storage, lvalue.x, rvalue.repeat(lvalue.x.width),
+                            indices=indices,
+                            xpoke=True, shadow=shadow)
+                        break
+                    self.poke(
+                        storage, lvalue.x, rvalue,
+                        indices=indices,
+                        bitslice=i,
+                        xpoke=True, shadow=shadow)
+            else:
+                index = index.value
+                if index >= index_range:
+                    self.poke(
+                        storage, lvalue.x, rvalue.repeat(lvalue.x.width),
+                        indices=indices,
+                        xpoke=True, shadow=shadow)
+                else:
+                    self.poke(
+                        storage, lvalue.x, rvalue,
+                        indices=indices,
+                        bitslice=index,
+                        xpoke=xpoke, shadow=shadow)
         else:
-            # TODO bit indexing
             raise RuntimeError('unexpected lvalue')
 
     def _poke_anywhere(self, storage, lvalue, rvalue, indices, shadow):
