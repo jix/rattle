@@ -84,3 +84,11 @@ class ResetContext:
 
 
 reset = ResetContext()
+
+
+__all__ = [
+    'when',
+    'elwhen',
+    'otherwise',
+    'reset',
+]

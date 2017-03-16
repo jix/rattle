@@ -1,7 +1,6 @@
 import builtins
 from hypothesis import given
 import hypothesis.strategies as st
-from rattle.module import *
 from rattle.signal import *
 from rattle.type import *
 

@@ -1,4 +1,5 @@
 from rattle.primitive import *
+from rattle.bitvec import BitVec, bv
 
 
 def mkvars(names, width=1, dimensions=()):

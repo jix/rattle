@@ -6,12 +6,12 @@ from ..signal import Signal
 from ..error import ConversionNotImplemented, NoCommonSignalType
 
 
-class SignalMeta(abc.ABCMeta):
+class SignalTypeMeta(abc.ABCMeta):
     def __getitem__(cls, key):
         return cls.generic_convert(key)
 
 
-class SignalType(metaclass=SignalMeta):
+class SignalType(metaclass=SignalTypeMeta):
     def __getitem__(self, key):
         return self.convert(key)
 
@@ -137,7 +137,7 @@ class SignalType(metaclass=SignalMeta):
         return self._signal_class._from_prims(self, prims)
 
 
-class BasicType(SignalType, metaclass=SignalMeta):
+class BasicType(SignalType, metaclass=SignalTypeMeta):
     @property
     def _prim_shape(self):
         return {(): (False, self._prim_width,)}

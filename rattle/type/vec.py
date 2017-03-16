@@ -1,7 +1,8 @@
-from .type import *
+from .type import SignalType
 from ..signal import Signal
 from ..primitive import *
 from ..slice import dispatch_getitem
+from ..bitmath import log2up
 from ..bitvec import BitVec
 
 

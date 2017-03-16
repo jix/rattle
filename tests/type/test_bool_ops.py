@@ -1,5 +1,4 @@
 import pytest
-from rattle.module import *
 from rattle.signal import *
 from rattle.type import *
 

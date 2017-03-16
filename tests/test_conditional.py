@@ -1,4 +1,4 @@
-from rattle.module import *
+from rattle.module import Module
 from rattle.signal import *
 from rattle.type import *
 from rattle.conditional import *

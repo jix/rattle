@@ -1,4 +1,3 @@
-from rattle.circuit import *
 from rattle.signal import *
 from rattle.type import *
 from rattle.conditional import *

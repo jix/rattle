@@ -46,26 +46,28 @@ class Implicit(metaclass=ImplicitMeta):
         module = context.current().module
         restores = []
 
-        for name, value in ((name, value), *additional_binds):
-            Implicit._check_name(name)
-            if isinstance(value, Signal):
-                value._access()
-            try:
-                old = module._module_data.implicit_bindings[name]
-            except KeyError:
-                restores.append((name, False, None))
-            else:
-                restores.append((name, True, old))
+        binds = ((name, value), *additional_binds)
 
-            module._module_data.implicit_bindings[name] = value
+        for bind_name, bind_value in binds:
+            Implicit._check_name(bind_name)
+            if isinstance(bind_value, Signal):
+                bind_value._access()
+            try:
+                old = module._module_data.implicit_bindings[bind_name]
+            except KeyError:
+                restores.append((bind_name, False, None))
+            else:
+                restores.append((bind_name, True, old))
+
+            module._module_data.implicit_bindings[bind_name] = bind_value
 
         yield
 
-        for name, present, old in restores:
+        for restore_name, present, old in restores:
             if present:
-                module._module_data.implicit_bindings[name] = old
+                module._module_data.implicit_bindings[restore_name] = old
             else:
-                del module._module_data.implicit_bindings[name]
+                del module._module_data.implicit_bindings[restore_name]
 
     @staticmethod
     def _module_scope_bind(name, value):

@@ -1,6 +1,5 @@
-from .type import *
 from .bool import Bool
-from .bundle import *
+from .bundle import Bundle
 
 
 _reset_modes = set([
@@ -18,7 +17,7 @@ class Clock(Bundle):
             reset = bool(reset)
 
         if reset is True:
-            reset = 'sync'  # pylint: disable=redefined-variable-type
+            reset = 'sync'
 
         self._reset = reset
         self._gated = gated

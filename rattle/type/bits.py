@@ -1,4 +1,4 @@
-from .type import *
+from .type import BasicType, SignalTypeMeta
 from ..signal import Signal
 from ..primitive import *
 from ..error import ConversionNotImplemented
@@ -6,7 +6,7 @@ from ..bitvec import BitVec, bv
 from ..slice import dispatch_getitem
 
 
-class BitsLike(BasicType, metaclass=SignalMeta):
+class BitsLike(BasicType, metaclass=SignalTypeMeta):
     # pylint: disable=abstract-method
     def __init__(self, width):
         super().__init__()

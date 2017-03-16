@@ -86,8 +86,8 @@ class SimContext:
                 xpoke = isinstance(condition, XClass)
                 pokes.append([storage, lvalue, rvalue, xpoke])
 
-        for storage, lvalue, rvalue, xpoke in pokes:
-            storage.poke_to_sim(self, lvalue, rvalue, xpoke)
+        for storage, poke_lvalue, poke_rvalue, xpoke in pokes:
+            storage.poke_to_sim(self, poke_lvalue, poke_rvalue, xpoke)
 
     def _eval_condition(self, condition):
         result = True

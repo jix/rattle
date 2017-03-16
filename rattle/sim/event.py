@@ -85,3 +85,16 @@ class ClockEvent(SimBasicEvent):
                 self.signal.en._prim().simplify_read())
         else:
             yield PrimEdgeEvent(self.signal.clk._prim().simplify_read())
+
+
+__all__ = [
+    'SimEvent',
+    'SimBasicEvent',
+    'SettledEvent',
+    'TimeEvent',
+    'PrimWatchEvent',
+    'PrimChangeEvent',
+    'PrimEdgeEvent',
+    'ChangeEvent',
+    'ClockEvent',
+]

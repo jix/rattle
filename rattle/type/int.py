@@ -1,13 +1,14 @@
 import abc
 
-from .type import *
-from .bits import *
+from .type import SignalTypeMeta
+from .bits import Bits, BitsLike, BitsLikeSignal
 from ..primitive import *
-from ..bitvec import X
+from ..bitvec import BitVec, X
 from ..bitmath import bitmask, signext
+from ..error import ConversionNotImplemented
 
 
-class Int(BitsLike, metaclass=SignalMeta):
+class Int(BitsLike, metaclass=SignalTypeMeta):
     @abc.abstractproperty
     def signed(self):
         pass

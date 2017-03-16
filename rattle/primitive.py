@@ -661,7 +661,7 @@ class PrimMux(PrimValue):
         index = index.simplify_read()
         ports = tuple(ports)
         assert index.dimensions == ()
-        assert len(ports) > 0
+        assert ports
         assert index.width == log2up(len(ports))
         assert all(port.dimensions == () for port in ports)
         assert all(port.width == ports[0].width for port in ports)
@@ -732,7 +732,7 @@ class PrimMux(PrimValue):
 class PrimTable(PrimValue):
     def __init__(self, table):
         table = tuple(table)
-        assert len(table) > 0
+        assert table
         assert all(entry.shape == table[0].shape for entry in table)
 
         super().__init__(
@@ -801,3 +801,34 @@ class PrimConst(PrimValue):
 
     def __iter__(self):
         return iter(())
+
+
+__all__ = [
+    'PrimSignal',
+    'PrimStorage',
+    'PrimValue',
+    'PrimReg',
+    'PrimIndex',
+    'PrimNot',
+    'PrimConcat',
+    'PrimBinaryOp',
+    'PrimAnd',
+    'PrimOr',
+    'PrimXor',
+    'PrimAdd',
+    'PrimSub',
+    'PrimMul',
+    'PrimCompareOp',
+    'PrimEq',
+    'PrimLt',
+    'PrimSignedLt',
+    'PrimExtendOp',
+    'PrimSignExt',
+    'PrimZeroExt',
+    'PrimSlice',
+    'PrimRepeat',
+    'PrimBitIndex',
+    'PrimMux',
+    'PrimTable',
+    'PrimConst',
+]

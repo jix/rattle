@@ -1,4 +1,4 @@
-from rattle.circuit import *
+from rattle.circuit import Block, BlockAssign, BlockCond
 from rattle.signal import *
 from rattle.type import *
 from rattle.conditional import *

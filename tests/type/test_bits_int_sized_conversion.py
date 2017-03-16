@@ -1,7 +1,7 @@
 from pytest import raises
 from rattle.signal import *
 from rattle.type import *
-from rattle.error import *
+from rattle.error import ConversionNotImplemented
 from rattle.bitvec import bv
 
 

@@ -1,8 +1,8 @@
 from pytest import raises
 from rattle.signal import *
-from rattle.module import *
+from rattle.module import Module
 from rattle.type import *
-from rattle.error import *
+from rattle.error import InvalidSignalRead, InvalidSignalAssignment
 
 
 def test_wire_invalid_read():

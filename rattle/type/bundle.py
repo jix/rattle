@@ -1,6 +1,7 @@
 import collections
 
-from .type import *
+from .type import SignalType
+from ..signal import Signal
 
 
 class Bundle(SignalType):

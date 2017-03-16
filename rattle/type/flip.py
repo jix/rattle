@@ -1,8 +1,8 @@
-from .type import *
-from ..signal import *
+from .type import SignalType, SignalTypeMeta
+from ..signal import Signal
 
 
-class FlipMeta(SignalMeta):
+class FlipMeta(SignalTypeMeta):
     def __call__(cls, unflipped_type):
         if isinstance(unflipped_type, Flip):
             return unflipped_type.unflipped_type

@@ -211,3 +211,12 @@ def Reg(signal_type, clk=None):
 
     signal = _make_storage(signal_type, wrap_prims=wrap_reg)
     return signal
+
+
+__all__ = [
+    'Signal',
+    'Wire',
+    'Input',
+    'Output',
+    'Reg',
+]

@@ -1,9 +1,9 @@
 from pytest import raises
-from rattle.module import *
+from rattle.module import Module
 from rattle.signal import *
 from rattle.type import *
-from rattle.error import *
-from rattle.implicit import *
+from rattle.error import ImplicitNotFound, InvalidSignalRead
+from rattle.implicit import Implicit
 
 
 def test_simple_implicit():

@@ -1,8 +1,8 @@
-from rattle.circuit import *
+from rattle.circuit import BlockCond
 from rattle.signal import *
 from rattle.type import *
 from rattle.conditional import *
-from rattle.implicit import *
+from rattle.implicit import Implicit
 
 from rattle.opt.lower_sync_reset import LowerSyncReset
 

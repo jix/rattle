@@ -1,7 +1,8 @@
-from .type import *
+from .type import BasicType
 from ..signal import Signal
 from ..primitive import *
 from ..bitvec import bv, xbool
+from ..error import ConversionNotImplemented
 
 
 class BoolType(BasicType):

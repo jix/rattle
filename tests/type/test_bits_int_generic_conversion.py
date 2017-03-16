@@ -1,7 +1,7 @@
 from pytest import raises
 from rattle.signal import *
 from rattle.type import *
-from rattle.error import *
+from rattle.error import ConversionNotImplemented
 
 
 def test_bits_to_uint_generic(module):
