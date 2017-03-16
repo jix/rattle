@@ -1,4 +1,5 @@
 import io
+import os
 from itertools import product
 from collections import OrderedDict
 from ..circuit import BlockAssign, BlockCond
@@ -45,6 +46,17 @@ class Verilog(VerilogTemplates):
         self._prepare()
         self._emit()
         self._store()
+
+    def write_to_dir(self, path):
+        # TODO escape filenames?
+        try:
+            os.mkdir(path)
+        except FileExistsError:
+            pass
+        for ((_type, source), name) in self.module_sources.sources.items():
+            with open(os.path.join(path, '%s.v' % name), 'w') as file:
+                file.write('module %s' % name)
+                file.write(source)
 
     def _process_submodules(self):
         for submodule in self.module_data.submodules:
