@@ -44,6 +44,9 @@ class Context:
     @contextmanager
     def activate_sim_context(self, sim):
         # TODO Also allow binding the sim context for repl use
+        if self.__sim is sim:
+            yield
+            return
         if self.__sim is not None:
             raise RuntimeError('simulations cannot be nested')
 

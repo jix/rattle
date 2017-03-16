@@ -209,24 +209,25 @@ class SimContext:
         return self._activity
 
     def run(self, timeout=None, stop_on_idle=True):
-        if timeout:
-            timeout += self._engine.time
-        self._idle = False
-        self._stop = False
-        while not self._stop:
-            if timeout and self._engine.time >= timeout:
-                break
-            if stop_on_idle and self._idle:
-                break
-            while self._step():
-                pass
-            try:
-                next_time = self._future_events_queue.get(block=False)
-            except Empty:
-                break
-            step = next_time - self._engine.time
-            assert step > 0
-            self._engine.advance_time(step)
+        with self.activate():
+            if timeout:
+                timeout += self._engine.time
+            self._idle = False
+            self._stop = False
+            while not self._stop:
+                if timeout and self._engine.time >= timeout:
+                    break
+                if stop_on_idle and self._idle:
+                    break
+                while self._step():
+                    pass
+                try:
+                    next_time = self._future_events_queue.get(block=False)
+                except Empty:
+                    break
+                step = next_time - self._engine.time
+                assert step > 0
+                self._engine.advance_time(step)
 
     def stop(self):
         self._stop = True
