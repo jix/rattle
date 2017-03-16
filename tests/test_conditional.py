@@ -141,7 +141,7 @@ def test_implicit_reopening(module):
             self.reg[:] = self.reg + 1
 
     self.en = Input(Bool)
-    self.output = Output(UInt(8))
+    self.output = OutputLatch(UInt(8))
 
     with when(self.en):
         # The following line generates an implicit clock connection

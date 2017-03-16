@@ -8,8 +8,8 @@ from rattle.opt.find_continuous_assignments import FindContinuousAssignments
 def test_find_continuous_assignments(module):
     self = module
 
-    self.a = Wire(Bool)
-    self.b = Wire(Bool)
+    self.a = Latch(Bool)
+    self.b = Latch(Bool)
 
     self.a[:] = ~self.b
 

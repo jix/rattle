@@ -1,6 +1,7 @@
 import abc
 from . import context
-from .primitive import PrimStorage, PrimReg
+from .primitive import PrimStorage, PrimReg, PrimConst, PrimTable
+from .bitvec import BitVec
 from .error import (
     ValueNotAvailable, InvalidSignalRead, InvalidSignalAssignment)
 
@@ -137,7 +138,7 @@ class Signal(metaclass=abc.ABCMeta):
 _flip_dir = {'input': 'output', 'output': 'input'}
 
 
-def _make_storage(signal_type, direction=None, wrap_prims=lambda x: x):
+def _make_storage(signal_type, direction=None, wrap_prims=None):
     module = context.current().module
     prims = {}
     shape = signal_type._prim_shape
@@ -159,8 +160,10 @@ def _make_storage(signal_type, direction=None, wrap_prims=lambda x: x):
             module._module_data.io_prims.append(prim)
         module._module_data.storage_prims.append(prim)
         storage.append(prim)
-
-        prims[key] = wrap_prims(prim)
+        if wrap_prims is None:
+            prims[key] = prim
+        else:
+            prims[key] = wrap_prims(module, prim)
 
     signal = signal_type._signal_class(signal_type, prims, storage=True)
 
@@ -170,19 +173,7 @@ def _make_storage(signal_type, direction=None, wrap_prims=lambda x: x):
     return signal
 
 
-def Wire(signal_type):
-    return _make_storage(signal_type)
-
-
-def Input(signal_type):
-    return _make_storage(signal_type, direction='input')
-
-
-def Output(signal_type):
-    return _make_storage(signal_type, direction='output')
-
-
-def Reg(signal_type, clk=None):
+def _make_reg(signal_type, clk=None, direction=None):
     from .type.clock import Clock
     from .implicit import Implicit
 
@@ -206,17 +197,62 @@ def Reg(signal_type, clk=None):
     else:
         en_prim = None
 
-    def wrap_reg(prim):
+    def wrap_reg(module, prim):
         return PrimReg(clk_prim, en_prim, reset_prim, clock_type.reset, prim)
 
-    signal = _make_storage(signal_type, wrap_prims=wrap_reg)
-    return signal
+    return _make_storage(signal_type, direction=direction, wrap_prims=wrap_reg)
+
+
+def _wrap_assign_x(module, prim):
+    circuit = module._module_data.circuit
+
+    xval = PrimConst(BitVec(prim.width, 0, -1))
+
+    for size in prim.dimensions:
+        xval = PrimTable((xval,) * size)
+
+    prim.lower_and_add_to_circuit((), xval, circuit=circuit, reset=False)
+
+    return prim
+
+
+def Latch(signal_type):
+    return _make_storage(signal_type)
+
+
+def OutputLatch(signal_type):
+    return _make_storage(
+        signal_type, direction='output')
+
+
+def Wire(signal_type):
+    return _make_storage(signal_type, wrap_prims=_wrap_assign_x)
+
+
+def Input(signal_type):
+    return _make_storage(signal_type, direction='input')
+
+
+def Output(signal_type):
+    return _make_storage(
+        signal_type, direction='output', wrap_prims=_wrap_assign_x)
+
+
+def Reg(signal_type, clk=None):
+    return _make_reg(signal_type, clk=clk)
+
+
+def OutputReg(signal_type, clk=None):
+    return _make_reg(signal_type, clk=clk, direction='output')
 
 
 __all__ = [
     'Signal',
+    'Latch',
+    'OutputLatch',
     'Wire',
     'Input',
     'Output',
     'Reg',
+    'OutputReg',
 ]
