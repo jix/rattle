@@ -12,10 +12,18 @@ from .. import context
 
 
 class SimContext:
+    # pylint: disable=attribute-defined-outside-init
     def __init__(self, module):
         module._module_data.circuit.finalize()
 
+        self._module = module
         self._engine = SimEngine(module)
+
+        self.reset(_reset_engine=False)
+
+    def reset(self, *, _reset_engine=True):
+        if _reset_engine:
+            self._engine.reset()
 
         self._threads = set()
         self._watched_events = {}
@@ -36,6 +44,8 @@ class SimContext:
         self._busy_count = 0
         self._idle = False
         self._stop = False
+
+        self._discover_sim_inits(self._module)
 
     def activate(self):
         return context.current().activate_sim_context(self)
@@ -304,6 +314,19 @@ class SimContext:
     def _release_busy(self):
         self._busy_count -= 1
         self._idle = not self._busy_count
+
+    def _discover_sim_inits(self, module):
+        # TODO should this be pre-order instead?
+        # TODO should this be specified?
+        for submodule in module._module_data.submodules:
+            self._discover_sim_inits(submodule)
+
+        try:
+            setup_fn = module.sim_init
+        except AttributeError:
+            pass
+        else:
+            self.thread(setup_fn)
 
 
 class SimThread:
