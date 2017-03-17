@@ -50,6 +50,9 @@ class SimContext:
     def activate(self):
         return context.current().activate_sim_context(self)
 
+    def time(self):
+        return self._engine.time
+
     def peek(self, signal):
         const_prims = {}
 

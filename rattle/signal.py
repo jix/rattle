@@ -24,6 +24,17 @@ class Signal(metaclass=abc.ABCMeta):
     def signal_type(self):
         return self._signal_type
 
+    @staticmethod
+    def isinstance(signal, signal_type):
+        from .type.type import SignalType
+        if not isinstance(signal, Signal):
+            return False
+
+        if isinstance(signal_type, SignalType):
+            return signal.signal_type == signal_type
+        else:
+            return isinstance(signal.signal_type, signal_type)
+
     def assign(self, value):
         ctx = context.current()
         if ctx.sim_active:
