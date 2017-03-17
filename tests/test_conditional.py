@@ -150,11 +150,14 @@ def test_implicit_reopening(module):
     with otherwise:
         self.output[:] = 0
 
-    assert circuit.conditions[0] == ()  # clk
-    assert circuit.conditions[1] == ()  # reset
-    assert circuit.conditions[2] == (
+    assert circuit.conditions[0] == ()  # clk X
+    assert circuit.conditions[1] == ()  # clk implicit
+    assert circuit.conditions[2] == ()  # reset X
+    assert circuit.conditions[3] == ()  # reset implicit
+
+    assert circuit.conditions[4] == (
         (True, self.en._prim()),
     )
-    assert circuit.conditions[3] == (
+    assert circuit.conditions[5] == (
         (False, self.en._prim()),
     )

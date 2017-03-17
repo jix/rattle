@@ -216,6 +216,13 @@ def _wrap_assign_x(module, prim):
     return prim
 
 
+def _wrap_assign_x_parent(module, prim):
+    parent = module._module_data.parent
+    if parent is not None:
+        _wrap_assign_x(parent, prim)
+    return prim
+
+
 def Latch(signal_type):
     return _make_storage(signal_type)
 
@@ -230,7 +237,8 @@ def Wire(signal_type):
 
 
 def Input(signal_type):
-    return _make_storage(signal_type, direction='input')
+    return _make_storage(
+        signal_type, direction='input', wrap_prims=_wrap_assign_x_parent)
 
 
 def Output(signal_type):
