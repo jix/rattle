@@ -88,6 +88,7 @@ class Verilog(VerilogTemplates):
             submodule_io = submodule._module_data.io_prims
             self.named_prims.update(submodule_io)
             self.submodule_io.extend(submodule_io)
+            self.storage.update(submodule_io)
 
         for storage, assignments in self.circuit.assign.items():
             self.wire_storage.add(storage)
