@@ -1,5 +1,5 @@
 from .type import BasicType, SignalTypeMeta
-from ..signal import Signal
+from ..signal import BasicSignal
 from ..primitive import *
 from ..error import ConversionNotImplemented
 from ..bitvec import BitVec, bv
@@ -69,7 +69,7 @@ class BitsLike(BasicType, metaclass=SignalTypeMeta):
         return self.width
 
 
-class BitsLikeSignal(Signal):
+class BitsLikeSignal(BasicSignal):
     @property
     def width(self):
         return self.signal_type.width

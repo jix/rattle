@@ -18,6 +18,7 @@ class Vcd:
 
     def close(self):
         self.update()
+        self._file.close()
 
     def _write_header(self):
         self._file.write('$version rattle sim $end\n')

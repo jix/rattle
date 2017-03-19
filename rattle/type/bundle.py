@@ -89,6 +89,10 @@ class BundleSignal(Signal):
             field: self[field].value
             for field in self.signal_type.fields}
 
+    def _add_to_trace(self, trace, scope, name):
+        for key in self.signal_type.fields.keys():
+            self[key]._add_to_trace(trace, scope + [('struct', name)], key)
+
     # TODO Better repr
 
 

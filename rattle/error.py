@@ -28,3 +28,7 @@ class ImplicitNotFound(RuntimeError):
 
 class ValueNotAvailable(RuntimeError):
     pass
+
+
+class SignalNotTraceable(RuntimeError):
+    pass

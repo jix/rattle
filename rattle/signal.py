@@ -3,7 +3,8 @@ from . import context
 from .primitive import PrimStorage, PrimReg, PrimConst, PrimTable
 from .bitvec import BitVec
 from .error import (
-    ValueNotAvailable, InvalidSignalRead, InvalidSignalAssignment)
+    ValueNotAvailable, InvalidSignalRead, InvalidSignalAssignment,
+    SignalNotTraceable)
 
 
 class Signal(metaclass=abc.ABCMeta):
@@ -144,6 +145,16 @@ class Signal(metaclass=abc.ABCMeta):
 
     def _bundle_field_access(self):
         return self
+
+    def _add_to_trace(self, trace, scope, name):
+        raise SignalNotTraceable(
+            'signals of type %r cannot be traced' % self.signal_type)
+
+
+class BasicSignal(Signal, metaclass=abc.ABCMeta):
+    # pylint: disable=abstract-method
+    def _add_to_trace(self, trace, scope, name):
+        trace._add_prim(scope, name, self._prim())
 
 
 _flip_dir = {'input': 'output', 'output': 'input'}

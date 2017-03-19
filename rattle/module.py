@@ -16,6 +16,7 @@ class ModuleData:
         self.storage_prims = []
         self.circuit = Circuit()
         self.names = Names()
+        self.name = None
         try:
             self.parent = ctx.module
         except NoModuleUnderConstruction:
@@ -52,3 +53,8 @@ class Module(metaclass=abc.ABCMeta):
             if value.parent == self:
                 self._module_data.names.name_submodule(value, name)
         return super().__setattr__(name, value)
+
+    def trace(self, trace):
+        trace.add_named_signals(self)
+        for submodule in self._module_data.submodules:
+            submodule.trace(trace)

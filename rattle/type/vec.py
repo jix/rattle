@@ -91,6 +91,10 @@ class VecSignal(Signal):
     def value(self):
         return tuple(self[i].value for i in range(len(self)))
 
+    def _add_to_trace(self, trace, scope, name):
+        for i in range(self.signal_type.length):
+            self[i]._add_to_trace(trace, scope + [('struct', name)], str(i))
+
 
 class VecHelper:
     def __init__(self, values):

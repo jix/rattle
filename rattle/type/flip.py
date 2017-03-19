@@ -60,3 +60,6 @@ class FlipSignal(Signal):
 
     def _bundle_field_access(self):
         return self.flipped
+
+    def _add_to_trace(self, trace, scope, name):
+        self.flipped._add_to_trace(trace, scope, name)

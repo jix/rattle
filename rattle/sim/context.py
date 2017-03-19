@@ -335,6 +335,11 @@ class SimContext:
         else:
             self.thread(setup_fn)
 
+    def dump_vcd_trace(self, trace, file):
+        if isinstance(file, str):
+            file = open(file, 'w')
+        self._engine.dump_vcd_trace(trace, file)
+
 
 class SimThread:
     def __init__(self, action, events):

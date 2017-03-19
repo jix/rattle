@@ -1,5 +1,5 @@
 from .type import BasicType
-from ..signal import Signal
+from ..signal import BasicSignal
 from ..primitive import *
 from ..bitvec import bv, xbool
 from ..error import ConversionNotImplemented
@@ -36,7 +36,7 @@ def _raise(cls):
 BoolType.__new__ = _raise
 
 
-class BoolSignal(Signal):
+class BoolSignal(BasicSignal):
     def __invert__(self):
         return Bool._from_prim(PrimNot(self._prim()))
 
