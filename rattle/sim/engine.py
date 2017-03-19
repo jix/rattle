@@ -29,9 +29,16 @@ class SimEngine:
         for module in modules:
             self._add_module_recursive(module)
 
+        self._vcd_dumps = {}
+
         self.reset()
 
     def reset(self):
+        for vcd in self._vcd_dumps.values():
+            vcd.close()
+
+        self._vcd_dumps = {}
+
         self._values = {
             storage: self._xval(storage)
             for storage in self._storage_prims}
@@ -56,7 +63,6 @@ class SimEngine:
 
         self.step_combinational()
 
-    @property
     def time(self):
         return self._time
 
@@ -167,6 +173,8 @@ class SimEngine:
         return stepped
 
     def advance_time(self, step):
+        for vcd in self._vcd_dumps.values():
+            vcd.update()
         self._time += step
 
     @staticmethod
@@ -396,3 +404,9 @@ class SimEngine:
             return True
         except KeyError:
             return False
+
+    def dump_vcd_trace(self, trace, file):
+        from .vcd import Vcd
+        if trace in self._vcd_dumps:
+            raise RuntimeError('trace is already being dumped')
+        self._vcd_dumps[trace] = Vcd(self, trace, file)

@@ -51,7 +51,7 @@ class SimContext:
         return context.current().activate_sim_context(self)
 
     def time(self):
-        return self._engine.time
+        return self._engine.time()
 
     def peek(self, signal):
         const_prims = {}
@@ -177,7 +177,7 @@ class SimContext:
             if event < 0:
                 # TODO better error
                 raise RuntimeError("negative time delay")
-            return TimeEvent(self._engine.time + event)
+            return TimeEvent(self._engine.time() + event)
         elif isinstance(event, Signal):
             if isinstance(event.signal_type, Clock):
                 return ClockEvent(event)
@@ -197,7 +197,7 @@ class SimContext:
 
     def _step(self):
         self._activity = False
-        self._trigger_event(TimeEvent(self._engine.time))
+        self._trigger_event(TimeEvent(self._engine.time()))
         self._step_combinational()
 
         self._shadow = OrderedDict()
@@ -214,11 +214,12 @@ class SimContext:
     def run(self, timeout=None, stop_on_idle=True):
         with self.activate():
             if timeout:
-                timeout += self._engine.time
+                timeout += self._engine.time()
             self._idle = False
             self._stop = False
             while not self._stop:
-                if timeout and self._engine.time >= timeout:
+                engine_time = self._engine.time()
+                if timeout and engine_time >= timeout:
                     break
                 if stop_on_idle and self._idle:
                     break
@@ -227,8 +228,10 @@ class SimContext:
                 try:
                     next_time = self._future_events_queue.get(block=False)
                 except Empty:
+                    if timeout:
+                        self._engine.advance_time(timeout - engine_time)
                     break
-                step = next_time - self._engine.time
+                step = next_time - engine_time
                 assert step > 0
                 self._engine.advance_time(step)
 
@@ -250,10 +253,10 @@ class SimContext:
                     self._engine.add_callback(
                         storage, event, self._edge_callback)
             elif isinstance(event, TimeEvent):
-                if event.timestamp < self._engine.time:
+                if event.timestamp < self._engine.time():
                     # TODO better exception
                     raise RuntimeError('event is in the past')
-                elif event.timestamp > self._engine.time:
+                elif event.timestamp > self._engine.time():
                     self._future_events_queue.put(event.timestamp)
         self._new_events.clear()
 
