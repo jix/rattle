@@ -32,3 +32,7 @@ class ValueNotAvailable(RuntimeError):
 
 class SignalNotTraceable(RuntimeError):
     pass
+
+
+class SignalRedefined(RuntimeError):
+    pass

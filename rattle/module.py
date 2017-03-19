@@ -1,7 +1,7 @@
 import abc
 
 from . import context
-from .error import NoModuleUnderConstruction
+from .error import NoModuleUnderConstruction, SignalRedefined
 from .signal import Signal
 from .circuit import Circuit
 from .names import Names
@@ -48,6 +48,9 @@ class Module(metaclass=abc.ABCMeta):
 
     def __setattr__(self, name, value):
         if isinstance(value, Signal):
+            if isinstance(getattr(self, name, None), Signal):
+                raise SignalRedefined(
+                    "signal '%s' already defined")
             self._module_data.names.name_signal(value, name)
         elif isinstance(value, Module):
             if value.parent == self:
