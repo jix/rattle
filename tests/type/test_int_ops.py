@@ -187,3 +187,15 @@ def test_gt_const(a, b):
 @given(const_ints(), const_ints())  # pylint: disable=no-value-for-parameter
 def test_ge_const(a, b):
     assert (a >= b).value == (a.value >= b.value)
+
+
+@given(
+    const_ints(), st.integers(0, 70))  # pylint: disable=no-value-for-parameter
+def test_lshift_const(x, shift):
+    assert (x << shift).value == x.value << shift
+
+
+@given(
+    const_ints(), st.integers(0, 70))  # pylint: disable=no-value-for-parameter
+def test_rshift_const(x, shift):
+    assert (x >> shift).value == x.value >> shift

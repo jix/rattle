@@ -193,6 +193,28 @@ class IntSignal(BitsLikeSignal):
     def __ge__(self, other):
         return ~(self < other)
 
+    def __lshift__(self, shift):
+        if isinstance(shift, int):
+            if shift < 0:
+                raise ValueError('negative shift count')
+
+            return type(self.signal_type)(self.width + shift)._from_prim(
+                PrimConcat([PrimConst(BitVec(shift, 0)), self._prim()]))
+        else:
+            return NotImplemented
+
+    def __rshift__(self, shift):
+        if isinstance(shift, int):
+            if shift < 0:
+                raise ValueError('negative shift count')
+
+            shift = min(shift, self.width - self.signal_type.signed)
+
+            return type(self.signal_type)(self.width - shift)._from_prim(
+                PrimSlice(shift, self.width - shift, self._prim()))
+        else:
+            return NotImplemented
+
 
 class UInt(Int):
     @property
