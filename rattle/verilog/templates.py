@@ -33,14 +33,17 @@ class VerilogTemplates:
         return tokens, 'self', 0
 
     _op_templates = {
-        PrimAnd: (' & ', 12),
-        PrimOr: (' | ', 16),
-        PrimXor: (' ^ ', 14),
+        PrimMul: (' * ', 2),
         PrimAdd: (' + ', 4),
         PrimSub: (' - ', 4),
-        PrimMul: (' * ', 2),
+        PrimShiftLeft: (' << ', 6),
+        PrimShiftRight: (' >> ', 6),
+        PrimArithShiftRight: (' >>> ', 6),
+        PrimLt: (' < ', 8),
         PrimEq: (' == ', 10),
-        PrimLt: (' < ', 6),
+        PrimAnd: (' & ', 12),
+        PrimXor: (' ^ ', 14),
+        PrimOr: (' | ', 16),
     }
 
     @_expr_template.on(PrimBinaryOp)
@@ -63,6 +66,13 @@ class VerilogTemplates:
             '$signed(', (expr.a, 'context', 99),
             ') < $signed(', (expr.b, 'context', 99), ')'
         ), 'self', 7
+
+    @_expr_template.on(PrimShiftOp)
+    def _expr_template(self, expr):
+        op, prec = self._op_templates[type(expr)]
+        return (
+            (expr.x, 'context', prec + 1), op, (expr.shift, 'self', prec)
+        ), 'context', prec + 1
 
     @_expr_template.on(PrimSignExt)
     def _expr_template(self, expr):

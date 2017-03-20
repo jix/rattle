@@ -492,6 +492,62 @@ class PrimSignedLt(PrimCompareOp):
         return bv(values(self.a).sign_wrap() < values(self.b).sign_wrap())
 
 
+class PrimShiftOp(PrimValue, metaclass=abc.ABCMeta):
+    def __init__(self, x, shift):
+        x, shift = x.simplify_read(), shift.simplify_read()
+        assert x.dimensions == ()
+        assert shift.dimensions == ()
+
+        super().__init__(width=x.width)
+        self.x = x
+        self.shift = shift
+
+    def tuple(self):
+        return (self.x, self.shift)
+
+    @property
+    def allowed_readers(self):
+        return self.x.allowed_readers & self.shift.allowed_readers
+
+    @property
+    def accessed_storage(self):
+        return self.x.accessed_storage | self.shift.accessed_storage
+
+    def __iter__(self):
+        yield self.x
+        yield self.shift
+
+    def map(self, map_fn):
+        return type(self)(map_fn(self.x), map_fn(self.shift))
+
+
+class PrimShiftLeft(PrimShiftOp):
+    def eval(self, values):
+        res = None
+        x = values(self.x)
+        for i in values(self.shift).values():
+            res = (x << i).combine(res)
+        return res
+
+
+class PrimShiftRight(PrimShiftOp):
+    def eval(self, values):
+        res = None
+        x = values(self.x)
+        for i in values(self.shift).values():
+            res = (x >> i).combine(res)
+        return res
+
+
+class PrimArithShiftRight(PrimShiftOp):
+    def eval(self, values):
+        res = None
+        x = values(self.x)
+        for i in values(self.shift).values():
+            res = (x.arith_rshift(i)).combine(res)
+        return res
+
+
 class PrimExtendOp(PrimValue, metaclass=abc.ABCMeta):
     def __init__(self, width, x):
         x = x.simplify_read()
@@ -822,6 +878,10 @@ __all__ = [
     'PrimEq',
     'PrimLt',
     'PrimSignedLt',
+    'PrimShiftOp',
+    'PrimShiftLeft',
+    'PrimShiftRight',
+    'PrimArithShiftRight',
     'PrimExtendOp',
     'PrimSignExt',
     'PrimZeroExt',

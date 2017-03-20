@@ -216,3 +216,20 @@ class BitsSignal(BitsLikeSignal):
     def as_sint(self):
         from .int import SInt
         return SInt(self.width)._from_prim(self._prim())
+
+    def _shift_op(self, shift, op):
+        from .int import UInt
+        try:
+            shift = UInt.generic_convert(shift, implicit=True)
+        except ConversionNotImplemented:
+            return NotImplemented
+        return self.signal_type._from_prim(op(self._prim(), shift._prim()))
+
+    def __lshift__(self, shift):
+        return self._shift_op(shift, PrimShiftLeft)
+
+    def __rshift__(self, shift):
+        return self._shift_op(shift, PrimShiftRight)
+
+    def arith_rshift(self, shift):
+        return self._shift_op(shift, PrimArithShiftRight)

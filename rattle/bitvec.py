@@ -210,6 +210,8 @@ class BitVec:
             i -= 1
 
     def combine(self, other):
+        if other is None:
+            return self
         return BitVec(
             max(self.width, other.width),
             self.value,
@@ -237,6 +239,18 @@ class BitVec:
             self.width,
             (self.value & ~update_mask) | (other.value << pos),
             (self.mask & ~update_mask) | (other.mask << pos))
+
+    def __lshift__(self, shift):
+        return BitVec(self.width, self.value << shift, self.mask << shift)
+
+    def __rshift__(self, shift):
+        return BitVec(self.width, self.value >> shift, self.mask >> shift)
+
+    def arith_rshift(self, shift):
+        return BitVec(
+            self.width,
+            signext(self.width, self.value) >> shift,
+            signext(self.width, self.mask) >> shift)
 
 
 class XClass:

@@ -2,7 +2,8 @@ from hypothesis import given
 import hypothesis.strategies as st
 from rattle.signal import *
 from rattle.type import *
-from rattle.bitvec import X
+from rattle.bitvec import X, bv
+from rattle.bitmath import log2up, bitmask, signext
 
 
 @st.composite
@@ -12,6 +13,19 @@ def const_bits_pair(draw):
     value_a = draw(st.integers(0, (1 << width) - 1))
     value_b = draw(st.integers(0, (1 << width) - 1))
     return bits_type[value_a], bits_type[value_b]
+
+
+@st.composite
+def const_bits_shift_pair(draw):
+    width = draw(st.integers(1, 65))
+    bits_type = Bits(width)
+    value = draw(st.integers(0, (1 << width) - 1))
+
+    shift_width = log2up(width) + 1
+    shift_type = UInt(shift_width)
+
+    shift = draw(st.integers(0, (1 << shift_width) - 1))
+    return bits_type[value], shift_type[shift]
 
 
 def test_const_negate():
@@ -97,5 +111,52 @@ def test_bits_eq(module):
 @given(const_bits_pair())  # pylint: disable=no-value-for-parameter
 def test_bits_eq_const(bits_pair):
     a, b = bits_pair
-    assert (a == b).value == (a.value == b.value)
+    assert (a == b).value == (a.value.value == b.value.value)
     assert (a == a).value is True
+
+
+@given(const_bits_shift_pair())  # pylint: disable=no-value-for-parameter
+def test_lshift_const(bits_pair):
+    x, shift = bits_pair
+    assert (x << shift).value == (
+        x.value.value << shift.value) & bitmask(x.width)
+
+
+@given(const_bits_shift_pair())  # pylint: disable=no-value-for-parameter
+def test_rshift_const(bits_pair):
+    x, shift = bits_pair
+    assert (x >> shift).value == x.value.value >> shift.value
+
+
+@given(const_bits_shift_pair())  # pylint: disable=no-value-for-parameter
+def test_arith_rshift_const(bits_pair):
+    x, shift = bits_pair
+    assert x.arith_rshift(shift).value == (
+        signext(x.width, x.value.value) >> shift.value) & bitmask(x.width)
+
+
+def test_lshift_xval_const():
+    v = Bits(8)['11001010']
+
+    assert (v << UInt(4)[bv('000x')]).value.same_as(bv('1x0xxxx0'))
+    assert (v << UInt(4)[bv('00x0')]).value.same_as(bv('xxx010x0'))
+    assert (v << UInt(4)[bv('x000')]).value.same_as(bv('xx00x0x0'))
+    assert (v << UInt(4)[bv('1xxx')]).value.same_as(bv('00000000'))
+
+
+def test_rshift_xval_const():
+    v = Bits(8)['11001010']
+
+    assert (v >> UInt(4)[bv('000x')]).value.same_as(bv('x1x0xxxx'))
+    assert (v >> UInt(4)[bv('00x0')]).value.same_as(bv('xxxxx010'))
+    assert (v >> UInt(4)[bv('x000')]).value.same_as(bv('xx00x0x0'))
+    assert (v >> UInt(4)[bv('1xxx')]).value.same_as(bv('00000000'))
+
+
+def test_arith_rshift_xval_const():
+    v = Bits(8)['11001010']
+
+    assert v.arith_rshift(UInt(4)[bv('000x')]).value.same_as(bv('11x0xxxx'))
+    assert v.arith_rshift(UInt(4)[bv('00x0')]).value.same_as(bv('11xxx010'))
+    assert v.arith_rshift(UInt(4)[bv('x000')]).value.same_as(bv('11xx1x1x'))
+    assert v.arith_rshift(UInt(4)[bv('1xxx')]).value.same_as(bv('11111111'))
