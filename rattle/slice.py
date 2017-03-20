@@ -27,7 +27,7 @@ def check_slice(width, index):
         if isinstance(start, int):
             if start < 0:
                 start += width
-            if start < 0 or start >= width:
+            if start < 0 or start > width:
                 raise IndexError('start index out of bounds')
             if (isinstance(stop, list) and len(stop) == 1 and
                     isinstance(stop[0], int)):
@@ -40,6 +40,8 @@ def check_slice(width, index):
                     raise IndexError('stop index out of bounds')
 
                 length = stop - start
+                if length < 0:
+                    raise IndexError('stop index before start index')
 
                 return 'const_slice', start, length
 

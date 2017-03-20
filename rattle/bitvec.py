@@ -67,7 +67,7 @@ class BitVec:
                 raise TypeError('BitVec indices must be integers')
             if start < 0:
                 start += len(self)
-            if start < 0 or start >= len(self):
+            if start < 0 or start > len(self):
                 raise IndexError('BitVec index out of range')
             if stop < 0:
                 stop += len(self)
@@ -75,6 +75,9 @@ class BitVec:
                 raise IndexError('BitVec index out of range')
 
             width = stop - start
+            if width < 0:
+                raise IndexError('BitVec stop index before start index')
+
             width_mask = bitmask(width)
             return BitVec(
                 width,
