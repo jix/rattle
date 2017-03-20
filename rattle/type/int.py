@@ -201,7 +201,22 @@ class IntSignal(BitsLikeSignal):
             return type(self.signal_type)(self.width + shift)._from_prim(
                 PrimConcat([PrimConst(BitVec(shift, 0)), self._prim()]))
         else:
-            return NotImplemented
+            try:
+                shift = UInt.generic_convert(shift, implicit=True)
+            except ConversionNotImplemented:
+                return NotImplemented
+
+            if shift.width > 16:
+                # This is sadly needed to avoid memory explosion for
+                # intermediate values
+                raise RuntimeError(
+                    'excessive shift amount width, '
+                    'use Bits to generate truncated shifts')
+
+            output_width = self.width + bitmask(shift.width)
+
+            return type(self.signal_type).generic_convert(
+                self.extend(output_width).as_bits() << shift)
 
     def __rshift__(self, shift):
         if isinstance(shift, int):
@@ -213,7 +228,17 @@ class IntSignal(BitsLikeSignal):
             return type(self.signal_type)(self.width - shift)._from_prim(
                 PrimSlice(shift, self.width - shift, self._prim()))
         else:
-            return NotImplemented
+            try:
+                shift = UInt.generic_convert(shift, implicit=True)
+            except ConversionNotImplemented:
+                return NotImplemented
+
+            return self.signal_type._from_prim(
+                self._rshift_op(self._prim(), shift._prim()))
+
+    @abc.abstractproperty
+    def _rshift_op(self):
+        pass
 
 
 class UInt(Int):
@@ -281,6 +306,10 @@ class UIntSignal(IntSignal):
 
     def __invert__(self):
         return (~self.extend(self.width + 1).as_bits()).as_sint()
+
+    @property
+    def _rshift_op(self):
+        return PrimShiftRight
 
     @property
     def value(self):
@@ -364,6 +393,10 @@ class SIntSignal(IntSignal):
 
     def __invert__(self):
         return super().__invert__().as_sint()
+
+    @property
+    def _rshift_op(self):
+        return PrimArithShiftRight
 
     @property
     def value(self):

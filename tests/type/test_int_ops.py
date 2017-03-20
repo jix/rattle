@@ -15,6 +15,14 @@ def const_ints(draw):
     return int_type[value]
 
 
+@st.composite
+def const_uints(draw, min_width=0, max_width=65):
+    width = draw(st.integers(min_width, max_width))
+    int_type = UInt(width)
+    value = draw(st.integers(int_type.min_value, int_type.max_value))
+    return int_type[value]
+
+
 def test_and_coercion(module):
     self = module
     self.uint4 = Wire(UInt(4))
@@ -191,11 +199,23 @@ def test_ge_const(a, b):
 
 @given(
     const_ints(), st.integers(0, 70))  # pylint: disable=no-value-for-parameter
-def test_lshift_const(x, shift):
+def test_lshift_fixed_const(x, shift):
     assert (x << shift).value == x.value << shift
 
 
 @given(
     const_ints(), st.integers(0, 70))  # pylint: disable=no-value-for-parameter
-def test_rshift_const(x, shift):
+def test_rshift_fixed_const(x, shift):
     assert (x >> shift).value == x.value >> shift
+
+
+@given(
+    const_ints(), const_uints(0, 16))  # pylint: disable=no-value-for-parameter
+def test_lshift_const(x, shift):
+    assert (x << shift).value == x.value << shift.value
+
+
+@given(
+    const_ints(), const_uints(0, 16))  # pylint: disable=no-value-for-parameter
+def test_rshift_const(x, shift):
+    assert (x >> shift).value == x.value >> shift.value
