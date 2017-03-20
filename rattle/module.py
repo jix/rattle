@@ -61,3 +61,6 @@ class Module(metaclass=abc.ABCMeta):
         trace.add_named_signals(self)
         for submodule in self._module_data.submodules:
             submodule.trace(trace)
+
+
+__all__ = ['Module']

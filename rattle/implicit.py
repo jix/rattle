@@ -85,3 +85,6 @@ class Implicit(metaclass=ImplicitMeta):
             raise ValueError(
                 "implicit name '%s' is not a path of python identifiers",
                 name)
+
+
+__all__ = ['Implicit']
