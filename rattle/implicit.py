@@ -30,6 +30,7 @@ class ImplicitMeta(type):
         for (parent, child) in zip(path[::-1], path[-2::-1]):
             with child.reopen():
                 implicit_input = Input(value.signal_type)
+            child._module_data.names.name_signal(implicit_input, name)
             child._module_data.implicit_bindings[name] = implicit_input
             with parent.reopen():
                 implicit_input[:] = value
