@@ -70,7 +70,9 @@ class Names:
         subnames = module._module_data.names
 
         for prim in module._module_data.io_prims:
-            self.name_prim(prim, '%s_%s' % (name, subnames.name_prim(prim)))
+            self.name_prim(
+                prim, '%s_%s' % (name, subnames.name_prim(prim)),
+                check_signal=False)
 
     def name_prim(self, prim, name=None, check_signal=True):
         # TODO has simplify_read always the semantics we want here?
