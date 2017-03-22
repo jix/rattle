@@ -150,6 +150,10 @@ class SignalType(metaclass=SignalTypeMeta):
             prims[key] = xval
         return self._from_prims(prims)
 
+    @property
+    def contains_flipped(self):
+        return any(flip for (flip, *_shape) in self._prim_shape.values())
+
 
 class BasicType(SignalType, metaclass=SignalTypeMeta):
     @property
