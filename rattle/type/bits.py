@@ -1,5 +1,5 @@
-from .type import BasicType, SignalTypeMeta
-from ..signal import BasicSignal
+from .type import SignalTypeMeta
+from .basic import BasicType, BasicSignal
 from ..primitive import *
 from ..error import ConversionNotImplemented
 from ..bitvec import BitVec, bv

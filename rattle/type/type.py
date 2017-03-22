@@ -153,16 +153,3 @@ class SignalType(metaclass=SignalTypeMeta):
     @property
     def contains_flipped(self):
         return any(flip for (flip, *_shape) in self._prim_shape.values())
-
-
-class BasicType(SignalType, metaclass=SignalTypeMeta):
-    @property
-    def _prim_shape(self):
-        return {(): (False, self._prim_width,)}
-
-    @abc.abstractproperty
-    def _prim_width(self):
-        pass
-
-    def _from_prim(self, prim):
-        return self._from_prims({(): prim})

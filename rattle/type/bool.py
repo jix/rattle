@@ -1,5 +1,4 @@
-from .type import BasicType
-from ..signal import BasicSignal
+from .basic import BasicType, BasicSignal
 from ..primitive import *
 from ..bitvec import bv, xbool
 from ..error import ConversionNotImplemented

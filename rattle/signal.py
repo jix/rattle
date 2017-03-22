@@ -151,12 +151,6 @@ class Signal(metaclass=abc.ABCMeta):
             'signals of type %r cannot be traced' % self.signal_type)
 
 
-class BasicSignal(Signal, metaclass=abc.ABCMeta):
-    # pylint: disable=abstract-method
-    def _add_to_trace(self, trace, scope, name):
-        trace._add_prim(scope, name, self._prim())
-
-
 _flip_dir = {'input': 'output', 'output': 'input'}
 
 
