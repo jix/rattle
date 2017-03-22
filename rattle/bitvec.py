@@ -346,8 +346,7 @@ def xbool(value):
         return value != 0
     else:
         # TODO Figure out how to extend this
-        # TODO Better error message
-        raise RuntimeError('value cannot be converted to xbool')
+        raise TypeError('value cannot be converted to xbool')
 
 
 def xnot(value):

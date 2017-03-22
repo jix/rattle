@@ -15,7 +15,13 @@ class BoolType(BasicType):
 
     def _const_signal(self, value, *, implicit):
         # pylint: disable=unused-variable
-        return Bool._from_prim(PrimConst(bv(xbool(value))))
+        try:
+            value = xbool(value)
+        except TypeError:
+            pass
+        else:
+            return Bool._from_prim(PrimConst(bv(value)))
+        super()._const_signal(value, implicit=implicit)
 
     @property
     def _prim_width(self):

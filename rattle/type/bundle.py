@@ -53,7 +53,7 @@ class Bundle(SignalType):
                     ((field,) + k, v)
                     for k, v in field_signal._prims.items())
             return self._from_prims(prims)
-        return NotImplemented
+        return super()._const_signal(value, implicit=implicit)
 
     @property
     def _signal_class(self):

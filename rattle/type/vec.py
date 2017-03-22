@@ -45,7 +45,7 @@ class Vec(SignalType):
 
             return self._from_prims({
                 k: PrimTable(v) for k, v in transposed.items()})
-        return NotImplemented
+        return super()._const_signal(value, implicit=implicit)
 
     @property
     def _signal_class(self):

@@ -3,6 +3,8 @@ from operator import or_
 import abc
 
 from ..signal import Signal
+from ..bitvec import BitVec, XClass
+from ..primitive import PrimConst, PrimTable
 from ..error import ConversionNotImplemented, NoCommonSignalType
 
 
@@ -103,8 +105,10 @@ class SignalType(metaclass=SignalTypeMeta):
         return NotImplemented
 
     def _const_signal(self, value, *, implicit):
-        # pylint: disable=no-self-use, unused-variable
-        return NotImplemented
+        if isinstance(value, XClass):
+            return self._xval()
+        else:
+            return NotImplemented
 
     @classmethod
     def _generic_const_signal(cls, value, *, implicit):
@@ -135,6 +139,16 @@ class SignalType(metaclass=SignalTypeMeta):
 
     def _from_prims(self, prims):
         return self._signal_class._from_prims(self, prims)
+
+    def _xval(self):
+        prims = {}
+        for key, (_flip, width, *dimensions) in self._prim_shape.items():
+            xval = PrimConst(BitVec(width, 0, -1))
+            for size in dimensions:
+                xval = PrimTable((xval,) * size)
+
+            prims[key] = xval
+        return self._from_prims(prims)
 
 
 class BasicType(SignalType, metaclass=SignalTypeMeta):
