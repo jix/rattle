@@ -55,8 +55,9 @@ class Flip(SignalType, metaclass=FlipMeta):
 
 
 class FlipSignal(Signal):
+    @property
     def value(self):
-        return self.flip().value
+        return self.flipped.value
 
     @property
     def flipped(self):
