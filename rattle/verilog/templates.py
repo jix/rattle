@@ -112,13 +112,24 @@ class VerilogTemplates:
     @_expr_template.on(PrimMux)
     def _expr_template(self, expr):
         if expr.index.width != 1:
-            # TODO implement larger muxes
-            raise RuntimeError('mux exprs not supported yet')
+            tokens = []
+            template = ' == %i\'h%%0%ix ? ' % (
+                expr.index.width, (expr.index.width + 3) // 4)
+            for i, port in enumerate(expr.ports):
+                tokens.append((expr.index, 'context', 11))
+                tokens.append(template % i)
+                tokens.append((port, 'context', 18))
+                tokens.append(' : ')
+
+            tokens.append('%i\'b%s' % (
+                expr.width, 'x' * expr.width))
+
+            return tokens, 'context', 19
         return (
             (expr.index, 'self', 18), ' ? ',
             (expr.ports[1], 'context', 18), ' : ',
             (expr.ports[0], 'context', 19)
-        ), 'self', 19
+        ), 'context', 19
 
     @_expr_template.on(PrimConst)
     def _expr_template(self, expr):
