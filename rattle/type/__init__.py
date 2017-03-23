@@ -6,6 +6,7 @@ from .bits import Bits
 from .int import Int, UInt, SInt
 from .bundle import Bundle, bundle
 from .vec import Vec, vec
+from .packed import Packed
 
 __all__ = [
     'SignalType',
@@ -16,4 +17,5 @@ __all__ = [
     'Int', 'UInt', 'SInt',
     'Bundle', 'bundle',
     'Vec', 'vec',
+    'Packed',
 ]
