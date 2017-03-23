@@ -745,6 +745,15 @@ class PrimMux(PrimValue):
 
         return res
 
+    def simplify(self):
+        if isinstance(self.index, PrimConst) and self.index.value.mask == 0:
+            try:
+                return self.ports[self.index.value.value]
+            except IndexError:
+                return PrimConst(BitVec(self.width, 0, -1))
+        else:
+            return self
+
     def simplify_read(self):
         return PrimMux(
             self.index, (port.simplify_read() for port in self.ports))
