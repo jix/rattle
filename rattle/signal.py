@@ -150,6 +150,17 @@ class Signal(metaclass=abc.ABCMeta):
         raise SignalNotTraceable(
             'signals of type %r cannot be traced' % self.signal_type)
 
+    @abc.abstractmethod
+    def _pack(self, packer):
+        pass
+
+    @property
+    def packed(self):
+        from .packing import Packer
+        packer = Packer()
+        self._pack(packer)
+        return packer.packed_signal()
+
 
 _flip_dir = {'input': 'output', 'output': 'input'}
 

@@ -3,7 +3,7 @@ from operator import or_
 import abc
 
 from ..signal import Signal
-from ..bitvec import BitVec, XClass
+from ..bitvec import BitVec, X, XClass
 from ..primitive import PrimConst, PrimTable
 from ..error import ConversionNotImplemented, NoCommonSignalType
 
@@ -153,3 +153,13 @@ class SignalType(metaclass=SignalTypeMeta):
     @property
     def contains_flipped(self):
         return any(flip for (flip, *_shape) in self._prim_shape.values())
+
+    @abc.abstractmethod
+    def _unpack(self, unpacker):
+        pass
+
+    def unpack(self, signal):
+        from ..packing import Unpacker
+        packed_type = self[X].packed.signal_type
+        signal = packed_type.convert(signal, implicit=True)
+        return self._unpack(Unpacker(signal))

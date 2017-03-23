@@ -1,6 +1,7 @@
 from pytest import raises
 from rattle.signal import *
 from rattle.type import *
+from rattle.bitvec import bv
 
 
 def test_bundle_field_access(module):
@@ -73,3 +74,36 @@ def test_bundle_construction_helper_fn_const(module):
     self.bundle = Wire(Bundle(a=Bool, b=Bits(8)))
     self.bits = Wire(Bits(8))
     self.bundle[:] = bundle(a=True, b=self.bits)
+
+
+def test_bundle_packing_const():
+    MyBundle = Bundle(a=Bool, b=Bits(8))
+    values = {'a': True, 'b': 0b10101010}
+    my_bundle = MyBundle[values]
+
+    packed = my_bundle.packed
+
+    unpacked = MyBundle.unpack(packed)
+
+    assert packed.signal_type == Bits(9)
+    assert packed.value == bv('101010101')
+    assert unpacked.value == values
+
+
+def test_bundle_packing_bidir_const():
+    MyBundle = Bundle(a=Bool, b=Flip(Bits(8)), c=Flip(Bool), d=Bool)
+    values = {
+        'a': True,
+        'b': Bits['10101010'].flipped,
+        'c': Bool[False].flipped,
+        'd': True
+    }
+    my_bundle = MyBundle[values]
+
+    packed = my_bundle.packed
+
+    unpacked = MyBundle.unpack(packed)
+
+    assert packed.signal_type == Bundle(fwd=Bits(2), bwd=Flip(Bits(9)))
+    assert packed.value == {'fwd': bv('11'), 'bwd': bv('010101010')}
+    assert unpacked.value == my_bundle.value

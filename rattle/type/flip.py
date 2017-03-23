@@ -49,6 +49,10 @@ class Flip(SignalType, metaclass=FlipMeta):
 
         return super()._generic_convert(signal, implicit=implicit)
 
+    def _unpack(self, unpacker):
+        with unpacker.flip():
+            return self.unflipped_type._unpack(unpacker)
+
 
 class FlipSignal(Signal):
     def value(self):
@@ -63,3 +67,7 @@ class FlipSignal(Signal):
 
     def _add_to_trace(self, trace, scope, name):
         self.flipped._add_to_trace(trace, scope, name)
+
+    def _pack(self, packer):
+        with packer.flip():
+            self.flipped._pack(packer)

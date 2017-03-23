@@ -1,6 +1,7 @@
 from pytest import raises
 from rattle.signal import *
 from rattle.type import *
+from rattle.bitvec import bv
 
 
 def test_vec_const_indexing(module):
@@ -135,3 +136,19 @@ def test_vec_dynamic_multi_indexing_const():
     assert str(v[Bits['1']][Bits['0']].value) == '1100'
     assert str(v[Bits['0']][Bits['1']].value) == '1111'
     assert str(v[Bits['1']][Bits['1']].value) == '1010'
+
+
+def test_vec_packing_const():
+    MyVec = Vec(2, Vec(3, Bits(4)))
+    my_vec = MyVec[(
+        ('0000', '1111', '0101'),
+        ('1100', '1010', '1110')
+    )]
+
+    packed = my_vec.packed
+
+    unpacked = MyVec.unpack(packed)
+
+    assert packed.signal_type == Bits(2 * 3 * 4)
+    assert packed.value == bv('111010101100010111110000')
+    assert unpacked.value == my_vec.value

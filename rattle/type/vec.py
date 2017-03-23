@@ -57,6 +57,13 @@ class Vec(SignalType):
             k: v + (self.length,)
             for k, v in self.element_type._prim_shape.items()}
 
+    def _unpack(self, unpacker):
+        signals = []
+        for _ in range(self.length):
+            signals.append(
+                self.element_type._unpack(unpacker))
+        return self[signals]
+
 
 class VecSignal(Signal):
     @property
@@ -89,11 +96,15 @@ class VecSignal(Signal):
 
     @property
     def value(self):
-        return tuple(self[i].value for i in range(len(self)))
+        return tuple(self[i].value for i in range(self.signal_type.length))
 
     def _add_to_trace(self, trace, scope, name):
         for i in range(self.signal_type.length):
             self[i]._add_to_trace(trace, scope + [('struct', name)], str(i))
+
+    def _pack(self, packer):
+        for i in range(self.signal_type.length):
+            self[i]._pack(packer)
 
 
 class VecHelper:

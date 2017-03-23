@@ -68,14 +68,23 @@ class Bundle(SignalType):
                 for k, v in field_type._prim_shape.items())
         return shape
 
+    def _unpack(self, unpacker):
+        signals = {}
+        for key, field_type in self.__fields.items():
+            signals[key] = field_type._unpack(unpacker)
+        return self[signals]
+
 
 class BundleSignal(Signal):
-    def __getitem__(self, key):
+    def _getitem_raw(self, key):
         item_type = self.signal_type.fields[key]
         return item_type._from_prims({
             k[1:]: v
             for k, v in self._prims.items()
-            if k[0] == key})._bundle_field_access()
+            if k[0] == key})
+
+    def __getitem__(self, key):
+        return self._getitem_raw(key)._bundle_field_access()
 
     def __getattr__(self, name):
         try:
@@ -94,6 +103,10 @@ class BundleSignal(Signal):
             self[key]._add_to_trace(trace, scope + [('struct', name)], key)
 
     # TODO Better repr
+
+    def _pack(self, packer):
+        for key in self.signal_type.fields.keys():
+            self._getitem_raw(key)._pack(packer)
 
 
 class BundleHelper:
