@@ -54,10 +54,25 @@ def time():
     return context.current().sim.time()
 
 
+def is_simulation():
+    return context.current().sim_active
+
+
+def stop():
+    return context.current().sim.stop()
+
+
+def busy():
+    return context.current().sim.busy()
+
+
 __all__ = [
     'thread',
     'on',
     'always_on',
     'clock',
-    'time'
+    'time',
+    'is_simulation',
+    'stop',
+    'busy',
 ]
