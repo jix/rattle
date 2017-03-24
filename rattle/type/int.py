@@ -2,6 +2,7 @@ import abc
 
 from .type import SignalTypeMeta
 from .bits import Bits, BitsLike, BitsLikeSignal
+from ..signal import Signal
 from ..primitive import *
 from ..bitvec import BitVec, X
 from ..bitmath import bitmask, signext
@@ -258,11 +259,17 @@ class UInt(Int):
     def _generic_const_signal(cls, value, *, implicit):
         # pylint: disable=bad-super-call
         # We intentionally skip the Int version as it will call this one
-        return super(Int, cls)._generic_const_signal(
-            value, implicit=implicit).as_uint()
+        result = super(Int, cls)._generic_const_signal(
+            value, implicit=implicit)
+        if Signal.isinstance(result, Bits):
+            result = result.as_uint()
+        return result
 
     def _const_signal(self, value, *, implicit):
-        return super()._const_signal(value, implicit=implicit).as_uint()
+        result = super()._const_signal(value, implicit=implicit)
+        if Signal.isinstance(result, Bits):
+            result = result.as_uint()
+        return result
 
     def _convert(self, signal, *, implicit):
         if not implicit and signal.signal_type.__class__ == Bits:
@@ -295,6 +302,9 @@ class UIntSignal(IntSignal):
 
     def as_sint(self):
         return self.extend(self.width + 1).as_bits().as_sint()
+
+    def as_uint(self):
+        return self
 
     def _extend_unchecked(self, width):
         return UInt(width)._from_prim(
@@ -350,14 +360,19 @@ class SInt(Int):
             return SInt(width)._from_prim(
                 PrimConst(BitVec(width, value)))
         else:
-            return super()._generic_const_signal(
-                value, implicit=implicit).as_sint()
+            result = super()._generic_const_signal(value, implicit=implicit)
+            if Signal.isinstance(result, Bits):
+                result = result.as_sint()
+            return result
 
     def _const_signal(self, value, *, implicit):
         if isinstance(value, int):
             return SInt[value].extend(self.width)
         else:
-            return super()._const_signal(value, implicit=implicit).as_sint()
+            result = super()._const_signal(value, implicit=implicit)
+            if Signal.isinstance(result, Bits):
+                result = result.as_sint()
+            return result
 
     def _convert(self, signal, *, implicit):
         if not implicit and signal.signal_type.__class__ == Bits:
@@ -382,6 +397,9 @@ class SIntSignal(IntSignal):
         elif signal_type.__class__ == SInt:
             return self.resize(signal_type.width)
         return super()._convert(signal_type, implicit=implicit)
+
+    def as_sint(self):
+        return self
 
     def _extend_unchecked(self, width):
         return SInt(width)._from_prim(
