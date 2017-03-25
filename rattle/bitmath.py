@@ -51,3 +51,13 @@ def bitrepeat(count, width, value):
 
 def bitindex(value, index):
     return (value >> index) & 1
+
+
+__all__ = [
+    'log2up',
+    'log2down',
+    'ispow2',
+    'pow2up',
+    'pow2down',
+    'bitmask',
+]

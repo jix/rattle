@@ -10,6 +10,8 @@ from .bitvec import *
 from . import bitvec
 from .module import *
 from . import module
+from .bitmath import *
+from . import bitmath
 
 
 __all__ = (
@@ -18,4 +20,5 @@ __all__ = (
     conditional.__all__ +
     implicit.__all__ +
     bitvec.__all__ +
-    module.__all__)
+    module.__all__ +
+    bitmath.__all__)
