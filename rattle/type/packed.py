@@ -55,6 +55,12 @@ class PackedSignal(Signal):
     def value(self):
         return self.unpacked.value
 
+    def _convert(self, signal_type, *, implicit):
+        if signal_type == self.signal_type.unpacked_type:
+            return self.unpacked
+        else:
+            return super()._convert(signal_type, implicit=implicit)
+
     @property
     def packed(self):
         return self.signal_type._packed_type._from_prims(self._prims)
