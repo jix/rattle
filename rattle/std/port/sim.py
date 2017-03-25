@@ -13,8 +13,13 @@ class SimSource(Module):
 
         self.source = Output(Port(payload_type))
         self.clk = Implicit('clk')
+        self.run = Input(Bool)
+
+        self.valid = Wire(Bool)
 
         # TODO Mark as simulation only
+
+        self.source.valid[:] = self.valid & self.run
 
         self._items = deque()
 
@@ -35,6 +40,7 @@ class SimSource(Module):
         self._update()
 
     def sim_init(self):
+        self.run[:] = True
         self._update()
         sim.always_on(self.clk, self._sim_clk)
 
@@ -47,10 +53,10 @@ class SimSource(Module):
         if not sim.is_simulation():
             return
         if self._items:
-            self.source.valid[:] = True
+            self.valid[:] = True
             self.source.payload[:] = self._items[0]
         else:
-            self.source.valid[:] = False
+            self.valid[:] = False
             self.source.payload[:] = X
 
 
@@ -62,14 +68,17 @@ class SimSink(Module):
 
         self.sink = Input(Port(payload_type))
         self.clk = Implicit('clk')
+        self.run = Input(Bool)
 
         # TODO Mark as simulation only
+
+        self.sink.ready[:] = self.run
 
         self.items = []
         self.callback = None
 
     def sim_init(self):
-        self.sink.ready[:] = True
+        self.run[:] = True
         sim.always_on(self.clk, self._sim_clk)
 
     def _sim_clk(self):

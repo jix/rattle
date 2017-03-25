@@ -27,25 +27,31 @@ def test_sim_sink_sim_source(sim_runner):
                 dict(a=6, b=False),
             ]
 
-            self.source.replace(items[:4])
+            self.source.replace(items)
+
+            @sim.thread
+            def _stop_source():
+                for _ in range(4):
+                    yield self.clk
+                self.source.run[:] = False
 
             yield self.clk
 
-            self.sink.sink.ready[:] = False
+            self.sink.run[:] = False
 
             yield self.clk
 
-            self.sink.sink.ready[:] = True
+            self.sink.run[:] = True
 
             for _ in range(8):
                 yield self.clk
 
-            self.source.extend(items[4:])
+            self.source.run[:] = True
 
             for _ in range(4):
                 yield self.clk
 
-            self.sink.sink.ready[:] = False
+            self.sink.run[:] = False
 
             for _ in range(2):
                 yield self.clk
