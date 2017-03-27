@@ -23,6 +23,9 @@ class PrimMeta(abc.ABCMeta):
         if isinstance(signal, PrimConst):
             return signal
 
+        if signal.width == 0:
+            return PrimConst(BitVec(0, 0))
+
         def raise_fn(prim):
             raise ValueNotAvailable
 
@@ -65,6 +68,8 @@ class PrimSignal(metaclass=PrimMeta):
         pass
 
     def lower_and_add_to_circuit(self, condition, rvalue, circuit, reset):
+        if self.width == 0:
+            return
         lowered_assignments = self.lower_assignment(condition, rvalue)
 
         for assignment in lowered_assignments:
@@ -79,6 +84,8 @@ class PrimSignal(metaclass=PrimMeta):
                 storage.add_to_circuit(circuit, lvalue, condition, rvalue)
 
     def lower_assignment(self, condition, rvalue):
+        if self.width == 0:
+            return
         for assignment in self.split_assignment(condition, rvalue):
             sublvalue, subcondition, subrvalue = assignment
 
@@ -86,6 +93,8 @@ class PrimSignal(metaclass=PrimMeta):
             yield storage, sublvalue, subcondition, subrvalue
 
     def split_assignment(self, condition, rvalue):
+        if self.width == 0:
+            return
         rvalue = rvalue.simplify_read()
         if self.dimensions:
             index_width = log2up(self.dimensions[-1])
@@ -170,10 +179,12 @@ class PrimStorage(PrimSignal):
         return self, self
 
     def add_to_circuit(self, circuit, lvalue, condition, rvalue):
-        circuit.add_combinational(self, lvalue, condition, rvalue)
+        if lvalue.width != 0:
+            circuit.add_combinational(self, lvalue, condition, rvalue)
 
     def poke_to_sim(self, sim, lvalue, rvalue, xpoke):
-        sim._poke(self, lvalue, rvalue, xpoke)
+        if lvalue.width != 0:
+            sim._poke(self, lvalue, rvalue, xpoke)
 
     @property
     def accessed_storage(self):
@@ -241,11 +252,17 @@ class PrimReg(PrimValue):
         return self.x, self
 
     def add_to_circuit(self, circuit, lvalue, condition, rvalue):
+        if lvalue.width == 0:
+            return
+
         if self.en is not None:
             condition += ((True, self.en),)
         circuit.add_clocked(self, self.clk, lvalue, condition, rvalue)
 
     def add_reset_to_circuit(self, circuit, lvalue, rvalue):
+        if lvalue.width == 0:
+            return
+
         if self.reset_mode in ('async+init', 'async'):
             circuit.add_async_reset(self, self.clk, self.reset, lvalue, rvalue)
         elif self.reset_mode in ('sync+init', 'sync'):
@@ -255,7 +272,8 @@ class PrimReg(PrimValue):
         # TODO Should we error if no reset is emitted?
 
     def poke_to_sim(self, sim, lvalue, rvalue, xpoke):
-        sim._poke(self, lvalue, rvalue, xpoke)
+        if lvalue.width != 0:
+            sim._poke(self, lvalue, rvalue, xpoke)
 
     @property
     def accessed_storage(self):
@@ -354,7 +372,8 @@ class PrimNot(PrimValue):
 class PrimConcat(PrimValue):
     # TODO Make PrimConcat writable?
     def __init__(self, parts):
-        parts = tuple(part.simplify_read() for part in parts)
+        parts = tuple(
+            part.simplify_read() for part in parts if part.width != 0)
         assert all(part.dimensions == () for part in parts)
         super().__init__(
             width=sum(part.width for part in parts))
@@ -859,6 +878,13 @@ class PrimConst(PrimValue):
     @property
     def allowed_readers(self):
         return AllSet()
+
+    @property
+    def allowed_writers(self):
+        if self.width == 0:
+            return AllSet()
+        else:
+            return frozenset()
 
     @property
     def accessed_storage(self):

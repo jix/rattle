@@ -8,7 +8,8 @@ class Trace:
 
     def _add_prim(self, scope, name, prim):
         # TODO handle duplicated names
-        self._traces.append((scope, name, prim.simplify_read()))
+        if prim.width != 0:
+            self._traces.append((scope, name, prim.simplify_read()))
 
     def add(self, name, signal, module=None):
         if module is None:

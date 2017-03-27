@@ -183,14 +183,17 @@ def _make_storage(signal_type, direction=None, wrap_prims=None):
             dimensions=dimensions,
             direction=flipped if flip else direction)
 
-        if direction is not None:
-            module._module_data.io_prims.append(prim)
-        module._module_data.storage_prims.append(prim)
-        storage.append(prim)
-        if wrap_prims is None:
-            prims[key] = prim
+        if width != 0:
+            if direction is not None:
+                module._module_data.io_prims.append(prim)
+            module._module_data.storage_prims.append(prim)
+            storage.append(prim)
+            if wrap_prims is None:
+                prims[key] = prim
+            else:
+                prims[key] = wrap_prims(module, prim)
         else:
-            prims[key] = wrap_prims(module, prim)
+            prims[key] = prim
 
     signal = signal_type._signal_class(signal_type, prims, storage=True)
 
