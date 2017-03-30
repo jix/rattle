@@ -200,6 +200,10 @@ class Bits(BitsLike):
     def _signal_class(self):
         return BitsSignal
 
+    @classmethod
+    def _prim(cls, prim):
+        return Bits(prim.width)._from_prim(prim)
+
 
 class BitsSignal(BitsLikeSignal):
     def as_uint(self):

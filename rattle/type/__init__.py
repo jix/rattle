@@ -7,6 +7,7 @@ from .int import Int, UInt, SInt
 from .bundle import Bundle, bundle
 from .vec import Vec, vec
 from .packed import Packed
+from .enum import Enum
 
 __all__ = [
     'SignalType',
@@ -18,4 +19,5 @@ __all__ = [
     'Bundle', 'bundle',
     'Vec', 'vec',
     'Packed',
+    'Enum',
 ]
