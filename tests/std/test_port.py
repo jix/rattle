@@ -3,61 +3,54 @@ from rattle.std.port import *
 import rattle.sim as sim
 
 
-def test_sim_sink_sim_source(sim_runner):
+def test_sim_sink_sim_source(sim_testbench):
     Type = Bundle(a=UInt(32), b=Bool)
 
-    class TB(Module):
-        def construct(self):
-            self.clk = Input(Clock(reset='init')).as_implicit('clk')
+    @sim_testbench
+    def _testbench(self):
+        self.source = SimSource(Type)
+        self.sink = SimSink(Type)
 
-            self.source = SimSource(Type)
-            self.sink = SimSink(Type)
+        self.sink.sink[:] = self.source.source
 
-            self.sink.sink[:] = self.source.source
+        yield
 
-        def sim_init(self):
-            sim.clock(self.clk, 10)
+        items = [
+            dict(a=1, b=True),
+            dict(a=2, b=False),
+            dict(a=3, b=True),
+            dict(a=4, b=True),
+            dict(a=5, b=False),
+            dict(a=6, b=False),
+        ]
 
-            items = [
-                dict(a=1, b=True),
-                dict(a=2, b=False),
-                dict(a=3, b=True),
-                dict(a=4, b=True),
-                dict(a=5, b=False),
-                dict(a=6, b=False),
-            ]
+        self.source.replace(items)
 
-            self.source.replace(items)
-
-            @sim.thread
-            def _stop_source():
-                for _ in range(4):
-                    yield self.clk
-                self.source.run[:] = False
-
-            yield self.clk
-
-            self.sink.run[:] = False
-
-            yield self.clk
-
-            self.sink.run[:] = True
-
-            for _ in range(8):
-                yield self.clk
-
-            self.source.run[:] = True
-
+        @sim.thread
+        def _stop_source():
             for _ in range(4):
                 yield self.clk
+            self.source.run[:] = False
 
-            self.sink.run[:] = False
+        yield self.clk
 
-            for _ in range(2):
-                yield self.clk
+        self.sink.run[:] = False
 
-            assert [x.value for x in self.sink.items] == items
+        yield self.clk
 
-            sim.stop()
+        self.sink.run[:] = True
 
-    sim_runner(TB())
+        for _ in range(8):
+            yield self.clk
+
+        self.source.run[:] = True
+
+        for _ in range(4):
+            yield self.clk
+
+        self.sink.run[:] = False
+
+        for _ in range(2):
+            yield self.clk
+
+        assert [x.value for x in self.sink.items] == items

@@ -40,3 +40,23 @@ def sim_runner(request):
         ctx.run(*args, **kwds)
         ctx.reset()
     return run
+
+
+@pytest.fixture
+def sim_testbench(sim_runner):  # pylint: disable=redefined-outer-name
+    import rattle.sim as sim
+
+    def testbench(fn, *args, **kwds):
+        class Testbench(Module):
+            def construct(self):
+                self.clk = Input(Clock(reset='init')).as_implicit('clk')
+                self._sim_testbench_fn = fn(self, *args, **kwds)
+                next(self._sim_testbench_fn)
+
+            def sim_init(self):
+                sim.clock(self.clk, 10)
+                yield from self._sim_testbench_fn
+                sim.stop()
+
+        sim_runner(Testbench())
+    return testbench
