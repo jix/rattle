@@ -22,6 +22,8 @@ class SignalType(metaclass=SignalTypeMeta):
         pass
 
     def __eq__(self, other):
+        if not isinstance(other, SignalType):
+            return NotImplemented
         return self is other or self._signature_tuple == other._signature_tuple
 
     def __ne__(self, other):

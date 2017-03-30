@@ -1,10 +1,13 @@
 import abc
+from itertools import product
 from . import context
-from .primitive import PrimStorage, PrimReg, PrimConst, PrimTable
+from .primitive import (
+    PrimStorage, PrimReg, PrimConst, PrimTable, PrimIndex, PrimEq, PrimAnd)
 from .bitvec import BitVec
+from .bitmath import log2up
 from .error import (
     ValueNotAvailable, InvalidSignalRead, InvalidSignalAssignment,
-    SignalNotTraceable)
+    SignalNotTraceable, ConversionNotImplemented)
 
 
 class Signal(metaclass=abc.ABCMeta):
@@ -160,6 +163,52 @@ class Signal(metaclass=abc.ABCMeta):
         packer = Packer()
         self._pack(packer)
         return packer.packed_signal()
+
+    def __eq__(self, other):
+        from .type import Bool
+        try:
+            other = self.signal_type.convert(other, implicit=True)
+        except ConversionNotImplemented:
+            if isinstance(other, Signal):
+                try:
+                    converted = other.signal_type.convert(self, implicit=True)
+                except ConversionNotImplemented:
+                    raise TypeError(
+                        'unsupported signal types for ==: %r and %r' %
+                        (self.signal_type, other.signal_type))
+                else:
+                    return converted == other
+            return NotImplemented
+
+        compares = []
+
+        for key, my_prim in self._prims.items():
+            compares.extend(self._eq_prim(my_prim, other._prim(key)))
+
+        if not compares:
+            return Bool[True]
+        else:
+            result, *rest = compares
+            for i in rest:
+                result = PrimAnd(result, i)
+            return Bool._from_prim(result)
+
+    @staticmethod
+    def _eq_prim(my_prim, other_prim):
+        indices = product(*map(range, reversed(my_prim.dimensions)))
+
+        for index in indices:
+            my_word, other_word = my_prim, other_prim
+            for i in index:
+                index_width = log2up(my_word.dimensions[-1])
+                i = PrimConst(BitVec(index_width, i))
+                my_word = PrimIndex(i, my_word)
+                other_word = PrimIndex(i, other_word)
+
+            yield PrimEq(my_word, other_word)
+
+    def __ne__(self, other):
+        return ~(self == other)
 
 
 _flip_dir = {'input': 'output', 'output': 'input'}

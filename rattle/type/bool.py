@@ -71,12 +71,6 @@ class BoolSignal(BasicSignal):
     def __rxor__(self, other):
         return self.__xor__(other)
 
-    def __eq__(self, other):
-        return self._binary_bitop(other, PrimEq)
-
-    def __ne__(self, other):
-        return ~(self == other)
-
     def repeat(self, count):
         from .bits import Bits
         if not isinstance(count, int):

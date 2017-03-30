@@ -117,13 +117,6 @@ class BitsLikeSignal(BasicSignal):
     def __rxor__(self, other):
         return self.__xor__(other)
 
-    def __eq__(self, other):
-        from .bool import Bool
-        return self._binary_bitop(other, PrimEq, Bool)
-
-    def __ne__(self, other):
-        return ~(self == other)
-
     def extend(self, width):
         if not isinstance(width, int):
             raise TypeError('signal width must be an integer')
