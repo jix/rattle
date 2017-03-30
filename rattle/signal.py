@@ -210,6 +210,9 @@ class Signal(metaclass=abc.ABCMeta):
     def __ne__(self, other):
         return ~(self == other)
 
+    def __bool__(self):
+        raise TypeError('cannot convert Signal into bool')
+
 
 _flip_dir = {'input': 'output', 'output': 'input'}
 
