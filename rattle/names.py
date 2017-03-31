@@ -82,7 +82,9 @@ class Names:
         except KeyError:
             pass
 
-        if check_signal and isinstance(prim, PrimStorage) and prim.signal:
+        if (
+                check_signal and isinstance(prim, PrimStorage) and
+                prim.signal is not None):
             # TODO will name ever be not None here?
             self.name_signal(prim.signal, name)
             return self.name_prim(prim, name, check_signal=False)
