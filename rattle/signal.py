@@ -229,18 +229,21 @@ def _make_storage(signal_type, direction=None, wrap_prims=None):
     for key in sorted(shape.keys()):
         flip, width, *dimensions = shape[key]
 
+        prim_direction = flipped if flip else direction
         prim = PrimStorage(
             module=module,
             width=width,
             dimensions=dimensions,
-            direction=flipped if flip else direction)
+            direction=prim_direction)
 
         if width != 0:
             if direction is not None:
                 module._module_data.io_prims.append(prim)
             module._module_data.storage_prims.append(prim)
             storage.append(prim)
-            if wrap_prims is None:
+            if prim_direction == 'input':
+                prims[key] = _wrap_assign_x_parent(module, prim)
+            elif wrap_prims is None:
                 prims[key] = prim
             else:
                 prims[key] = wrap_prims(module, prim)
@@ -320,7 +323,7 @@ def Wire(signal_type):
 
 def Input(signal_type):
     return _make_storage(
-        signal_type, direction='input', wrap_prims=_wrap_assign_x_parent)
+        signal_type, direction='input', wrap_prims=_wrap_assign_x)
 
 
 def Output(signal_type):
