@@ -17,6 +17,7 @@ class ModuleData:
         self.circuit = Circuit()
         self.names = Names()
         self.name = None
+        self.attributes = []
         try:
             self.parent = ctx.module
         except NoModuleUnderConstruction:
@@ -61,6 +62,12 @@ class Module(metaclass=abc.ABCMeta):
         trace.add_named_signals(self)
         for submodule in self._module_data.submodules:
             submodule.trace(trace)
+
+    def attribute(self, *attributes):
+        for attribute in attributes:
+            if isinstance(attribute, type):
+                attribute = attribute()
+            self._module_data.attributes.append(attribute)
 
 
 __all__ = ['Module']

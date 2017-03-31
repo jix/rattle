@@ -3,6 +3,10 @@ import os
 from itertools import product
 from collections import OrderedDict
 from ..circuit import BlockAssign, BlockCond
+from ..visitor import visitor
+from ..attribute import (
+    SimulationOnly, DoNotGenerate, ModuleName,
+    VerilogParameters, VerilogSignalAttribute)
 from .templates import VerilogTemplates
 
 
@@ -25,6 +29,8 @@ class ModuleSources:
 
 
 class Verilog(VerilogTemplates):
+    # pylint: disable=function-redefined
+
     def __init__(self, module, module_sources=None):
         # TODO make this adjustable / include parameters
         self.module_name = type(module).__name__
@@ -36,10 +42,21 @@ class Verilog(VerilogTemplates):
         self.indent = 0
         self.start_of_line = True
         self.submodule_verilogs = {}
+        self.do_not_generate = False
+        self.parameters = None
+        self.signal_attributes = {}
         if module_sources is None:
             self.module_sources = ModuleSources()
         else:
             self.module_sources = module_sources
+
+        self._process_attributes()
+
+        if self.do_not_generate:
+            return
+        elif self.parameters is not None:
+            raise RuntimeError(
+                'verilog parameters are not supported for generated modules')
 
         self._process_submodules()
         self.circuit.finalize()
@@ -57,6 +74,38 @@ class Verilog(VerilogTemplates):
             with open(os.path.join(path, '%s.v' % name), 'w') as file:
                 file.write('module %s' % name)
                 file.write(source)
+
+    def _process_attributes(self):
+        for attribute in self.module_data.attributes:
+            self._attribute(attribute)
+
+    @visitor
+    def _attribute(self, attribute):
+        pass
+
+    @_attribute.on(SimulationOnly)
+    def _attribute(self, attribute):
+        # pylint: disable=no-self-use
+        raise RuntimeError('Module %r is only for simulation' % self.module)
+
+    @_attribute.on(DoNotGenerate)
+    def _attribute(self, attribute):
+        self.do_not_generate = True
+
+    @_attribute.on(ModuleName)
+    def _attribute(self, attribute):
+        self.module_name = attribute.name
+
+    @_attribute.on(VerilogParameters)
+    def _attribute(self, attribute):
+        self.parameters = attribute.parameters
+
+    @_attribute.on(VerilogSignalAttribute)
+    def _attribute(self, attribute):
+        for prim in attribute.signal._prims.values():
+            prim = prim.simplify_read()
+            attributes = self.signal_attributes.setdefault(prim, [])
+            attributes.append(attribute.attribute)
 
     def _process_submodules(self):
         for submodule in self.module_data.submodules:
@@ -190,6 +239,14 @@ class Verilog(VerilogTemplates):
                 self.out.write(str(arg))
             self.start_of_line = False
 
+    def _write_block(self, block):
+        lines = block.split('\n')
+        for last, line in _mark_last(lines):
+            if last:
+                self._write(line)
+            else:
+                self._writeln(line)
+
     def _emit_io_ports(self):
         if not self.module_data.io_prims:
             self._writeln('();')
@@ -283,21 +340,29 @@ class Verilog(VerilogTemplates):
             self._emit_decl(prim)
         self._writeln()
 
-    def _emit_decl(self, port):
-        if port in self.reg_storage:
+    def _emit_decl(self, prim):
+        try:
+            attributes = self.signal_attributes[prim]
+            del self.signal_attributes[prim]
+        except KeyError:
+            pass
+        else:
+            for attribute in attributes:
+                self._write('(* ', attribute, ' *) ')
+        if prim in self.reg_storage:
             storage = 'reg '
         else:
             storage = 'wire '
 
-        if port.width == 1:
+        if prim.width == 1:
             width = ''
         else:
-            width = '[%i:0] ' % (port.width - 1)
+            width = '[%i:0] ' % (prim.width - 1)
 
-        vec_fmt = ' [%i:0]' * len(port.dimensions)
-        vec = vec_fmt % tuple(dim - 1 for dim in reversed(port.dimensions))
+        vec_fmt = ' [%i:0]' * len(prim.dimensions)
+        vec = vec_fmt % tuple(dim - 1 for dim in reversed(prim.dimensions))
 
-        self._writeln(storage, width, self.names.name_prim(port), vec, ';')
+        self._writeln(storage, width, self.names.name_prim(prim), vec, ';')
 
     def _emit_submodule_instances(self):
         if not self.module_data.submodules:
@@ -305,9 +370,14 @@ class Verilog(VerilogTemplates):
         self._writeln('// module instantiations')
         for submodule, verilog in self.submodule_verilogs.items():
             submodule_data = submodule._module_data
-            self._write(
-                verilog.module_name, ' ',
-                self.names.name_submodule(submodule))
+            self._write(verilog.module_name, ' ')
+            if verilog.parameters is not None:
+                self._write('#(')
+                self.indent += 1
+                self._write_block(verilog.parameters)
+                self.indent -= 1
+                self._write(') ')
+            self._write(self.names.name_submodule(submodule))
             if submodule_data.io_prims:
                 self._writeln('(')
                 self.indent += 1

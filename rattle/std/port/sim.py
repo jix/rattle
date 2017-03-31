@@ -11,6 +11,8 @@ class SimSource(Module):
             raise TypeError(
                 'SimSource does not support bidirectional payload types')
 
+        self.attribute(SimulationOnly)
+
         self.source = Output(Port(payload_type))
         self.clk = Implicit('clk')
         self.run = Input(Bool)
@@ -65,6 +67,8 @@ class SimSink(Module):
         if payload_type.contains_flipped:
             raise TypeError(
                 'SimSink does not support bidirectional payload types')
+
+        self.attribute(SimulationOnly)
 
         self.sink = Input(Port(payload_type))
         self.clk = Implicit('clk')
