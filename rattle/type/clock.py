@@ -1,5 +1,5 @@
 from .bool import Bool
-from .bundle import Bundle
+from .bundle import Bundle, BundleSignal
 
 
 _reset_modes = set([
@@ -43,6 +43,10 @@ class Clock(Bundle):
         return (
             type(self), self.reset, self.gated)
 
+    @property
+    def _signal_class(self):
+        return ClockSignal
+
     def __repr__(self):
         parts = []
         if self.reset != 'sync':
@@ -50,3 +54,19 @@ class Clock(Bundle):
         if self.gated:
             parts.append('gated=%r' % self.gated)
         return 'Clock(%s)' % ', '.join(parts)
+
+
+class ClockSignal(BundleSignal):
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+        self.__context_stack = []
+
+    def __enter__(self):
+        from ..implicit import Implicit
+        ctx = Implicit.bind('clk', self)
+        ctx.__enter__()
+        self.__context_stack.append(ctx)
+
+    def __exit__(self, *exc):
+        ctx = self.__context_stack.pop()
+        return ctx.__exit__(*exc)
