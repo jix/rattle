@@ -48,10 +48,10 @@ class Module(metaclass=abc.ABCMeta):
         return context.current().constructing_module(self)
 
     def __setattr__(self, name, value):
+        if isinstance(getattr(self, name, None), Signal):
+            raise SignalRedefined(
+                'signal %r already defined' % name)
         if isinstance(value, Signal):
-            if isinstance(getattr(self, name, None), Signal):
-                raise SignalRedefined(
-                    "signal '%s' already defined")
             self._module_data.names.name_signal(value, name)
         elif isinstance(value, Module):
             if value.parent == self:
