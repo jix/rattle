@@ -27,7 +27,7 @@ class Trace:
 
             current_module = current_module._module_data.parent
 
-        signal._add_to_trace(self, scope, name)
+        signal._add_to_trace(self, scope[::-1], name)
 
     def add_named_signals(self, module):
         for name, signal in module.__dict__.items():
