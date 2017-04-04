@@ -62,11 +62,14 @@ class Circuit:
     @staticmethod
     def _opt_passes():
         from .opt.lower_sync_reset import LowerSyncReset
+        from .opt.remove_overwritten_assignments import (
+            RemoveOverwrittenAssignments)
         from .opt.find_continuous_assignments import FindContinuousAssignments
         from .opt.reduce_bit_widths import ReduceBitWidths
 
         return [
             LowerSyncReset,
+            RemoveOverwrittenAssignments,
             FindContinuousAssignments,
             ReduceBitWidths,
         ]
