@@ -66,14 +66,18 @@ class Verilog(VerilogTemplates):
 
     def write_to_dir(self, path):
         # TODO escape filenames?
+        paths = []
         try:
             os.mkdir(path)
         except FileExistsError:
             pass
         for ((_type, source), name) in self.module_sources.sources.items():
-            with open(os.path.join(path, '%s.v' % name), 'w') as file:
+            source_path = os.path.join(path, '%s.v' % name)
+            paths.append(source_path)
+            with open(source_path, 'w') as file:
                 file.write('module %s' % name)
                 file.write(source)
+        return paths
 
     def _process_attributes(self):
         for attribute in self.module_data.attributes:
