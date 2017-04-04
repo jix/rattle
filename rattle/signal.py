@@ -213,6 +213,12 @@ class Signal(metaclass=abc.ABCMeta):
     def __bool__(self):
         raise TypeError('cannot convert Signal into bool')
 
+    def __setattr__(self, name, value):
+        if name.startswith('_'):
+            return super().__setattr__(name, value)
+        else:
+            raise AttributeError("can't set attributes on Signals")
+
 
 _flip_dir = {'input': 'output', 'output': 'input'}
 
