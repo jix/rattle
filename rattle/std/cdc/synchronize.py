@@ -1,5 +1,5 @@
 from rattle.prelude import *
-from rattle.attribute import VerilogSignalAttribute
+from rattle.attribute import Keep
 
 
 class Synchronize(Module):
@@ -20,5 +20,4 @@ class Synchronize(Module):
         self.regs[0][:] = self.din
         self.dout[:] = self.regs[-1]
 
-        # TODO This is xilinx specific, change to generic attribute
-        self.attribute(VerilogSignalAttribute(self.regs, 'KEEP="TRUE"'))
+        self.attribute(Keep(self.regs))

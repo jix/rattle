@@ -2,6 +2,8 @@ import io
 import os
 from itertools import product
 from collections import OrderedDict
+from pathlib import Path
+
 from ..circuit import BlockAssign, BlockCond
 from ..visitor import visitor
 from ..attribute import (
@@ -65,18 +67,25 @@ class Verilog(VerilogTemplates):
         self._store()
 
     def write_to_dir(self, path):
-        # TODO escape filenames?
-        paths = []
-        try:
-            os.mkdir(path)
-        except FileExistsError:
-            pass
+        path = Path(path)
+        path.mkdir(exist_ok=True)
+        paths = set()
         for ((_type, source), name) in self.module_sources.sources.items():
-            source_path = os.path.join(path, '%s.v' % name)
-            paths.append(source_path)
-            with open(source_path, 'w') as file:
-                file.write('module %s' % name)
-                file.write(source)
+            # TODO handle invalid filenames
+            source_path = path / ('%s.v' % name)
+            paths.add(source_path)
+
+            content = 'module %s%s' % (name, source)
+
+            try:
+                with source_path.open('r') as file:
+                    if file.read(len(content) + 1) == content:
+                        continue
+            except FileNotFoundError:
+                pass
+
+            with source_path.open('w') as file:
+                file.write(content)
         return paths
 
     def _process_attributes(self):

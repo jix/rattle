@@ -2,6 +2,10 @@ class Attribute:
     pass
 
 
+class BuildAttribute(Attribute):
+    pass
+
+
 class VerilogSignalAttribute(Attribute):
     def __init__(self, signal, attribute):
         self.signal, self.attribute = signal, attribute
@@ -23,6 +27,16 @@ class SimulationOnly(Attribute):
 class ModuleName(Attribute):
     def __init__(self, name):
         self.name = name
+
+
+class IO(BuildAttribute):
+    def __init__(self, signal, pin):
+        self.signal, self.pin = signal, pin
+
+
+class Keep(BuildAttribute):
+    def __init__(self, signal):
+        self.signal = signal
 
 
 __all__ = [
