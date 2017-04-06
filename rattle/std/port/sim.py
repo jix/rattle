@@ -1,6 +1,7 @@
 from collections import deque
 
 from rattle.prelude import *
+from rattle.attribute import SimulationOnly
 import rattle.sim as sim
 from .port import Port
 

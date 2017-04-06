@@ -12,8 +12,6 @@ from .module import *
 from . import module
 from .bitmath import *
 from . import bitmath
-from .attribute import *
-from . import attribute
 
 
 __all__ = (
@@ -23,5 +21,4 @@ __all__ = (
     implicit.__all__ +
     bitvec.__all__ +
     module.__all__ +
-    bitmath.__all__ +
-    attribute.__all__)
+    bitmath.__all__)

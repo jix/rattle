@@ -1,4 +1,5 @@
 from rattle.prelude import *
+from rattle.attribute import VerilogSignalAttribute
 
 
 class Synchronize(Module):
