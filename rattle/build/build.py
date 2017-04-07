@@ -151,5 +151,6 @@ class Build(metaclass=abc.ABCMeta):
         path.extend(more)
         return '.'.join(path)
 
-    def run_cmd(self, cmd):
+    @staticmethod
+    def run_cmd(cmd):
         subprocess.check_call(cmd)

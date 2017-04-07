@@ -1,5 +1,3 @@
-import re
-
 from .build import Build
 from ..visitor import visitor
 from ..attribute import IO, Keep, VerilogSignalAttribute
