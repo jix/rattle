@@ -2,17 +2,22 @@ import abc
 import argparse
 import subprocess
 import os
+from contextlib import contextmanager
 from pathlib import Path
 
 from ..verilog import Verilog
 from ..attribute import Attribute, BuildAttribute
 from ..primitive import PrimSlice, PrimStorage
+from ..signal import Signal
+from ..module import Module
 
 
 class Build(metaclass=abc.ABCMeta):
     def __init__(self, construct):
         self.construct = construct
         self.top_module = None
+        self.env = None
+
         self.parser = argparse.ArgumentParser(
             description='Build a rattle project.',
             allow_abbrev=False)
@@ -64,6 +69,31 @@ class Build(metaclass=abc.ABCMeta):
                 (attribute, module))
         return attribute
 
+    def io_constraint_helper(self, attribute, module):
+        if module is not self.top_module:
+            raise RuntimeError(
+                'IO constraints are only allowed in the top level module')
+        path, prim = self.signal_path(attribute.signal)
+
+        pins = attribute.pin.split()
+
+        if prim.width != len(pins):
+            raise RuntimeError('mismatch between signal width and pin count')
+
+        if prim.width == 1:
+            yield str(path), pins[0]
+        else:
+            for i, pin in enumerate(pins):
+                yield '%s[%i]' % (path, i), pin
+
+    def str(self, value):
+        if isinstance(value, Signal):
+            return self.signal_path(value)[0]
+        elif isinstance(value, Module):
+            return self.module_path(value)
+        else:
+            return str(value)
+
     def generate_sources(self):
         self.construct_top_module()
         verilog_dir = self.build_dir / 'verilog'
@@ -102,17 +132,21 @@ class Build(metaclass=abc.ABCMeta):
 
         self.build_dir = Path(self.args.build_dir).absolute()
 
-        self.build_dir.mkdir(exist_ok=True)
+        with self.enter_dir(self.build_dir):
+            if self.args.no_generate:
+                self.use_existing_sources()
+            else:
+                self.generate_sources()
 
-        os.chdir(self.build_dir)
+            if not self.args.no_build:
+                self.build()
 
-        if self.args.no_generate:
-            self.use_existing_sources()
-        else:
-            self.generate_sources()
+    def signal_path(self, signal):
+        paths = list(self.signal_paths(signal))
+        if len(paths) != 1:
+            raise RuntimeError('expected non-composite signal')
 
-        if not self.args.no_build:
-            self.build()
+        return paths[0]
 
     def signal_paths(self, signal):
         for prim in signal._prims.values():
@@ -151,6 +185,18 @@ class Build(metaclass=abc.ABCMeta):
         path.extend(more)
         return '.'.join(path)
 
-    @staticmethod
-    def run_cmd(cmd):
-        subprocess.check_call(cmd)
+    def run_cmd(self, cmd):
+        subprocess.check_call(cmd, env=self.env)
+
+    @contextmanager
+    def enter_dir(self, path, create=True):
+        if create:
+            path.mkdir(exist_ok=True)
+
+        old_dir = os.getcwd()
+        os.chdir(path)
+        try:
+            yield
+        finally:
+            os.chdir(old_dir)
+

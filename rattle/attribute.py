@@ -30,8 +30,8 @@ class ModuleName(Attribute):
 
 
 class IO(BuildAttribute):
-    def __init__(self, signal, pin):
-        self.signal, self.pin = signal, pin
+    def __init__(self, signal, pin, **attributes):
+        self.signal, self.pin, self.attributes = signal, pin, attributes
 
 
 class Keep(BuildAttribute):

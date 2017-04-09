@@ -43,28 +43,13 @@ class IcestormBuild(Build):
 
     @process_attribute.on(IO)
     def process_attribute(self, attribute, module):
-        if module is not self.top_module:
+        if attribute.attributes:
             raise RuntimeError(
-                'IO constraints are only allowed in the top level module')
-        paths = list(self.signal_paths(attribute.signal))
-        if len(paths) != 1:
-            raise RuntimeError(
-                'IO constraints are not allowed for composite signals')
+                'toolchain does not support IO attributes')
 
-        path, prim = paths[0]
-
-        pins = attribute.pin.split()
-
-        if prim.width != len(pins):
-            raise RuntimeError('mismatch between signal width and pin count')
-
-        if prim.width == 1:
+        for path, pin in self.io_constraint_helper(attribute, module):
             self.constraints.append(
-                'set_io %s %s' % (path, pins[0]))
-        else:
-            for i, pin in enumerate(pins):
-                self.constraints.append(
-                    'set_io %s[%i] %s' % (path, i, pin))
+                'set_io %s %s' % (path, pin))
 
     def build(self):
         self.run_cmd([
