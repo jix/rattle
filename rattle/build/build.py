@@ -188,15 +188,15 @@ class Build(metaclass=abc.ABCMeta):
     def run_cmd(self, cmd):
         subprocess.check_call(cmd, env=self.env)
 
+    @staticmethod
     @contextmanager
-    def enter_dir(self, path, create=True):
+    def enter_dir(path, create=True):
         if create:
             path.mkdir(exist_ok=True)
 
         old_dir = os.getcwd()
-        os.chdir(path)
+        os.chdir(str(path))
         try:
             yield
         finally:
             os.chdir(old_dir)
-
