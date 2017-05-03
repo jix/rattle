@@ -45,11 +45,7 @@ class IseBuild(Build):
         constraint_suffix = ''
 
         for io_attr, value in attribute.attributes.items():
-            if io_attr == 'io_standard':
-                constraint_suffix += ' | IOSTANDARD=%s' % value
-            else:
-                raise RuntimeError(
-                    'unknown IO attribute %r' % io_attr)
+            constraint_suffix += ' | %s=%s' % (io_attr.upper(), value)
 
         for path, pin in self.io_constraint_helper(attribute, module):
             self.constraints.append(
