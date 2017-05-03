@@ -10,6 +10,7 @@ from ..attribute import Attribute, BuildAttribute
 from ..primitive import PrimSlice, PrimStorage
 from ..signal import Signal
 from ..module import Module
+from ..type import Bits
 
 
 class Build(metaclass=abc.ABCMeta):
@@ -73,22 +74,28 @@ class Build(metaclass=abc.ABCMeta):
         if module is not self.top_module:
             raise RuntimeError(
                 'IO constraints are only allowed in the top level module')
-        path, prim = self.signal_path(attribute.signal)
+
+        if len(attribute.signal._prims) != 1:
+            raise RuntimeError('expected non-composite signal')
+
+        signal = Bits._prim(next(iter(attribute.signal._prims.values())))
 
         pins = attribute.pin.split()
 
-        if prim.width != len(pins):
-            raise RuntimeError('mismatch between signal width and pin count')
+        if signal.width != len(pins):
+            raise RuntimeError(
+                'mismatch between signal width (%i) and pin count (%i)' %
+                (signal.width, len(pins)))
 
-        if prim.width == 1:
-            yield str(path), pins[0]
+        if signal.width == 1:
+            yield self.prim_path(signal._prim()), pins[0]
         else:
             for i, pin in enumerate(pins):
-                yield '%s[%i]' % (path, i), pin
+                yield self.prim_path(signal[i]._prim()), pin
 
     def str(self, value):
         if isinstance(value, Signal):
-            return self.signal_path(value)[0]
+            return self.signal_path(value)
         elif isinstance(value, Module):
             return self.module_path(value)
         else:
@@ -153,24 +160,30 @@ class Build(metaclass=abc.ABCMeta):
             if prim.width == 0:
                 continue
 
-            prim = prim.simplify_read()
+            yield self.prim_path(prim)
 
-            suffix = ''
+    def prim_path(self, prim):
+        if prim.width == 0:
+            raise RuntimeError('zero-width signal cannot be named')
 
-            if isinstance(prim, PrimSlice):
-                if prim.width == 1:
-                    suffix = '[%i]' % prim.start
-                else:
-                    suffix = '[%i:%i]' % (
-                        prim.start + prim.width - 1, prim.start)
-                prim = prim.x
+        prim = prim.simplify_read()
 
-            if not isinstance(prim, PrimStorage):
-                raise RuntimeError('cannot compute path for given signal')
+        suffix = ''
 
-            name = prim.module._module_data.names.name_prim(prim)
+        if isinstance(prim, PrimSlice):
+            if prim.width == 1:
+                suffix = '[%i]' % prim.start
+            else:
+                suffix = '[%i:%i]' % (
+                    prim.start + prim.width - 1, prim.start)
+            prim = prim.x
 
-            yield self.module_path(prim.module, name + suffix), prim
+        if not isinstance(prim, PrimStorage):
+            raise RuntimeError('cannot compute path for given signal')
+
+        name = prim.module._module_data.names.name_prim(prim)
+
+        return self.module_path(prim.module, name + suffix)
 
     @staticmethod
     def module_path(module, *more):
