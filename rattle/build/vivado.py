@@ -22,6 +22,7 @@ class VivadoBuild(Build):
     # pylint: disable=function-redefined
     def __init__(self, construct, part):
         self.part = part
+        self.vivado = None
 
         super().__init__(construct)
 
@@ -72,37 +73,39 @@ class VivadoBuild(Build):
         if project_dir.exists():
             shutil.rmtree(str(project_dir))
 
-        with self.enter_dir(project_dir):
-            with self.launch_vivado():
-                self.vivado_cmd(
-                    'create_project -part %s rattle_project .' %
-                    self.tcl_escape(self.part))
+        project_dir.mkdir()
 
-                files = []
+        self.vivado_cmd('cd %s' % self.tcl_escape(str(project_dir)))
 
-                for file in self.verilog_files:
-                    try:
-                        file = Path('..') / file.relative_to(self.build_dir)
-                    except ValueError:
-                        pass
-                    files.append(file)
+        self.vivado_cmd(
+            'create_project -part %s rattle_project .' %
+            self.tcl_escape(self.part))
 
-                self.vivado_cmd(
-                    'add_files ' + ' '.join(map(self.tcl_escape, files)))
+        files = []
 
-                self.vivado_cmd(
-                    'add_files -fileset constrs_1 ../constraints.xdc')
+        for file in self.verilog_files:
+            try:
+                file = Path('..') / file.relative_to(self.build_dir)
+            except ValueError:
+                pass
+            files.append(file)
 
-                self.vivado_cmd(
-                    'set_property top %s [get_filesets sources_1]' %
-                    self.tcl_escape(self.top_module_name))
+        self.vivado_cmd(
+            'add_files ' + ' '.join(map(self.tcl_escape, files)))
 
-                # TODO is this needed?
-                self.vivado_cmd(
-                    'update_compile_order -fileset sources_1')
+        self.vivado_cmd(
+            'add_files -fileset constrs_1 ../constraints.xdc')
 
-                self.launch_run('synth_1')
-                self.launch_run('impl_1', to_step='write_bitstream')
+        self.vivado_cmd(
+            'set_property top %s [get_filesets sources_1]' %
+            self.tcl_escape(self.top_module_name))
+
+        # TODO is this needed?
+        self.vivado_cmd(
+            'update_compile_order -fileset sources_1')
+
+        self.launch_run('synth_1')
+        self.launch_run('impl_1', to_step='write_bitstream')
 
     def launch_run(self, run_name, to_step=None):
         escaped_run_name = self.tcl_escape(run_name)
@@ -129,36 +132,42 @@ class VivadoBuild(Build):
             universal_newlines=True,
             env=self.env)
 
-        try:
-            self.vivado.stdin.write(textwrap.dedent('''
-                proc rattle_build {args} {
-                    set status [catch {{*}$args} result]
-                    puts "///RATTLE BUILD/// result"
-                    puts "$status"
-                    puts "$result"
-                    puts "///RATTLE BUILD/// done"
-                }
-                puts "///RATTLE BUILD/// ready"
-            ''')[1:])
-            self.vivado.stdin.flush()
+        self.vivado.stdin.write(textwrap.dedent('''
+            proc rattle_build {args} {
+                set status [catch {{*}$args} result]
+                puts "///RATTLE BUILD/// result"
+                puts "$status"
+                puts "$result"
+                puts "///RATTLE BUILD/// done"
+            }
+            puts "///RATTLE BUILD/// ready"
+        ''')[1:])
+        self.vivado.stdin.flush()
 
-            while True:
-                line = self.vivado.stdout.readline()
-                if not line:
-                    raise RuntimeError("could not start vivado shell")
-                elif line == '///RATTLE BUILD/// ready\n':
-                    break
-                else:
-                    print(line[:-1])
+        while True:
+            line = self.vivado.stdout.readline()
+            if not line:
+                raise RuntimeError("could not start vivado shell")
+            elif line == '///RATTLE BUILD/// ready\n':
+                break
+            else:
+                print(line[:-1])
 
-            yield
-        finally:
-            self.vivado.terminate()
-            self.vivado.wait(10)
-            self.vivado.kill()
-            self.vivado.wait()
+    def terminate_vivado(self):
+        self.vivado.terminate()
+        self.vivado.wait(10)
+        self.vivado.kill()
+        self.vivado.wait()
+        self.vivado = None
+
+    def teardown(self):
+        if self.vivado is not None:
+            self.terminate_vivado()
 
     def vivado_cmd(self, command):
+        if self.vivado is None:
+            self.launch_vivado()
+
         print("> " + command)
         self.vivado.stdin.write('rattle_build %s\n' % command)
         self.vivado.stdin.flush()

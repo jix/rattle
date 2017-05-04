@@ -140,13 +140,19 @@ class Build(metaclass=abc.ABCMeta):
         self.build_dir = Path(self.args.build_dir).absolute()
 
         with self.enter_dir(self.build_dir):
-            if self.args.no_generate:
-                self.use_existing_sources()
-            else:
-                self.generate_sources()
+            try:
+                if self.args.no_generate:
+                    self.use_existing_sources()
+                else:
+                    self.generate_sources()
 
-            if not self.args.no_build:
-                self.build()
+                if not self.args.no_build:
+                    self.build()
+            finally:
+                self.teardown()
+
+    def teardown(self):
+        pass
 
     def signal_path(self, signal):
         paths = list(self.signal_paths(signal))
