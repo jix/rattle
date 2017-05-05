@@ -172,6 +172,8 @@ class PrimStorage(PrimSignal):
                 return frozenset([self.module.parent])
             else:
                 return frozenset(['simulation'])
+        elif self.direction == 'inout':
+            return frozenset([self.module.parent, self.module])
         else:
             return frozenset([self.module])
 

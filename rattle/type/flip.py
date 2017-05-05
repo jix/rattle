@@ -32,7 +32,7 @@ class Flip(SignalType, metaclass=FlipMeta):
     @property
     def _prim_shape(self):
         return {
-            key: (not flipped, *shape)
+            key: ('inout' if flipped == 'inout' else not flipped, *shape)
             for key, (flipped, *shape)
             in self.unflipped_type._prim_shape.items()}
 

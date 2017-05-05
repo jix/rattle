@@ -164,7 +164,7 @@ class Verilog(VerilogTemplates):
                 if (
                         lvalue in io_set and
                         rvalue in submodule_io_set and
-                        rvalue.direction == 'output' and
+                        rvalue.direction in ['output', 'inout'] and
                         not lvalue.dimensions and
                         not rvalue.dimensions):
                     self.replace_prims[rvalue] = lvalue
@@ -352,6 +352,9 @@ class Verilog(VerilogTemplates):
                         'assign ',
                         name, suffix_fmt % index, ' = ',
                         name, index_fmt % index, ';')
+                elif port.direction == 'inout':
+                    raise RuntimeError(
+                        'inout vector io ports are not supported')
         self._writeln()
 
     def _emit_storage_decls(self):

@@ -65,7 +65,10 @@ class Signal(metaclass=abc.ABCMeta):
         for key, (flip, *_) in self.signal_type._prim_shape.items():
             prim = self._prims[key]
 
-            write_prim = write ^ flip
+            if flip == 'inout':
+                write_prim = True
+            else:
+                write_prim = write ^ flip
 
             if write_prim:
                 if module not in prim.allowed_writers:
@@ -235,7 +238,10 @@ def _make_storage(signal_type, direction=None, wrap_prims=None):
     for key in sorted(shape.keys()):
         flip, width, *dimensions = shape[key]
 
-        prim_direction = flipped if flip else direction
+        if flip == 'inout':
+            prim_direction = 'inout' if direction is not None else None
+        else:
+            prim_direction = flipped if flip else direction
         prim = PrimStorage(
             module=module,
             width=width,
