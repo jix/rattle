@@ -142,6 +142,9 @@ class Verilog(VerilogTemplates):
         self.named_subexprs = []
         self.read_prims = set()
 
+        self.replace_prims = {}
+        self.assigns = []
+
         self.named_prims.update(self.module_data.storage_prims)
 
         self.storage = set(self.module_data.storage_prims)
@@ -152,10 +155,31 @@ class Verilog(VerilogTemplates):
             self.submodule_io.extend(submodule_io)
             self.storage.update(submodule_io)
 
+        io_set = set(self.module_data.io_prims)
+        submodule_io_set = set(self.submodule_io)
+
         for storage, assignments in self.circuit.assign.items():
             self.wire_storage.add(storage)
-            for _lvalue, rvalue in assignments:
-                self._prepare_expr(rvalue)
+            for lvalue, rvalue in assignments:
+                if (
+                        lvalue in io_set and
+                        rvalue in submodule_io_set and
+                        rvalue.direction == 'output' and
+                        not lvalue.dimensions and
+                        not rvalue.dimensions):
+                    self.replace_prims[rvalue] = lvalue
+                elif (
+                        lvalue in submodule_io_set and rvalue in io_set and
+                        not lvalue.dimensions and
+                        not rvalue.dimensions):
+                    self.replace_prims[lvalue] = rvalue
+                else:
+                    self._prepare_expr(rvalue)
+                    self.assigns.append((lvalue, rvalue))
+
+        self.submodule_io = [
+            prim for prim in self.submodule_io
+            if prim not in self.replace_prims]
 
         for _storage, block in self.circuit.combinational.items():
             self._prepare_block(block)
@@ -184,6 +208,7 @@ class Verilog(VerilogTemplates):
                 assert False
 
     def _prepare_expr(self, expr, named=False, indexable=False):
+        expr = self.replace_prims.get(expr, expr)
         if expr in self.named_prims:
             return
         elif expr in self.read_prims and not expr.dimensions:
@@ -400,12 +425,14 @@ class Verilog(VerilogTemplates):
                     suffix_fmt = '_%i' * len(port.dimensions)
                     index_fmt = '[%i]' * len(port.dimensions)
 
+                    replaced_port = self.replace_prims.get(port, port)
+
                     for last_index, index in _mark_last(indices):
                         sep = '' if last_port and last_index else ','
                         self._writeln(
                             '.', submodule_data.names.name_prim(port),
                             suffix_fmt % index,
-                            '(', self.names.name_prim(port),
+                            '(', self.names.name_prim(replaced_port),
                             index_fmt % index, ')', sep)
                 self.indent -= 1
                 self._writeln(');')
@@ -425,16 +452,15 @@ class Verilog(VerilogTemplates):
         self._writeln()
 
     def _emit_assigns(self):
-        if not self.circuit.assign:
+        if not self.assigns:
             return
         self._writeln('// continuous assignments')
-        for _storage, assigns in self.circuit.assign.items():
-            for lvalue, rvalue in assigns:
-                self._write('assign ')
-                self._emit_expr(lvalue, lvalue=True)
-                self._write(' = ')
-                self._emit_expr(rvalue)
-                self._writeln(';')
+        for lvalue, rvalue in self.assigns:
+            self._write('assign ')
+            self._emit_expr(lvalue, lvalue=True)
+            self._write(' = ')
+            self._emit_expr(rvalue)
+            self._writeln(';')
         self._writeln()
 
     def _emit_initial(self):
@@ -506,6 +532,7 @@ class Verilog(VerilogTemplates):
                 assert False
 
     def _emit_expr(self, prim, lvalue=False, expand=False, mode=None, prec=99):
+        prim = self.replace_prims.get(prim, prim)
         if lvalue:
             named = prim in self.storage
         else:
