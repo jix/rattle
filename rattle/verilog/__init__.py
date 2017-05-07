@@ -47,6 +47,7 @@ class Verilog(VerilogTemplates):
         self.do_not_generate = False
         self.parameters = None
         self.signal_attributes = {}
+        self.unique_module_name = True
         if module_sources is None:
             self.module_sources = ModuleSources()
         else:
@@ -55,6 +56,8 @@ class Verilog(VerilogTemplates):
         self._process_attributes()
 
         if self.do_not_generate:
+            if self.unique_module_name:
+                self._find_unique_name()
             return
         elif self.parameters is not None:
             raise RuntimeError(
@@ -108,6 +111,7 @@ class Verilog(VerilogTemplates):
     @_attribute.on(ModuleName)
     def _attribute(self, attribute):
         self.module_name = attribute.name
+        self.unique_module_name = attribute.unique
 
     @_attribute.on(VerilogParameters)
     def _attribute(self, attribute):
@@ -566,12 +570,15 @@ class Verilog(VerilogTemplates):
         except KeyError:
             pass
 
+        self._find_unique_name()
+
+        self.module_sources.sources[source_id] = self.module_name
+
+    def _find_unique_name(self):
         unique_name = self.module_name
         counter = 0
         while unique_name in self.module_sources.names:
             counter += 1
             unique_name = '%s_%i' % (self.module_name, counter)
         self.module_name = unique_name
-
-        self.module_sources.sources[source_id] = self.module_name
         self.module_sources.names.add(self.module_name)

@@ -25,8 +25,8 @@ class SimulationOnly(Attribute):
 
 
 class ModuleName(Attribute):
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, name, unique=True):
+        self.name, self.unique = name, unique
 
 
 class IO(BuildAttribute):
