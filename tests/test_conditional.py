@@ -134,7 +134,7 @@ def test_implicit_reopening(module):
     self._module_data.circuit = circuit = MockCircuit()
 
     class SubModule(Module):
-        def construct(self):
+        def __init__(self):
             self.output = Output(UInt(8))
             self.reg = Reg(UInt(8))
 

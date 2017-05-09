@@ -4,7 +4,7 @@ from .port import Port
 
 
 class Rs232Rx(Module):
-    def construct(self, bits=8, baudrate=None, fclk=None, period=None):
+    def __init__(self, bits=8, baudrate=None, fclk=None, period=None):
         if baudrate is None and fclk is None:
             pass
         elif baudrate is not None and fclk is not None:
@@ -69,7 +69,7 @@ class Rs232Rx(Module):
 
 
 class Rs232Tx(Module):
-    def construct(self, bits=8, baudrate=None, fclk=None, period=None):
+    def __init__(self, bits=8, baudrate=None, fclk=None, period=None):
         if baudrate is None and fclk is None:
             pass
         elif baudrate is not None and fclk is not None:
@@ -131,7 +131,7 @@ class Rs232Tx(Module):
 
 
 class Rs232(Module):
-    def construct(self, bits=8, baudrate=None, fclk=None, period=None):
+    def __init__(self, bits=8, baudrate=None, fclk=None, period=None):
         self.rx = Input(Bool)
         self.tx = Output(Bool)
         self.source = Output(Port(Bits(bits)))

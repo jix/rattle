@@ -7,7 +7,7 @@ from rattle.module import Module
 @pytest.yield_fixture
 def module():
     class TestModule(Module):
-        def construct(self):
+        def __init__(self):
             self.clk = Input(Clock()).as_implicit('clk')
     mod = TestModule()
     with mod.reopen():
@@ -48,7 +48,7 @@ def sim_testbench(sim_runner):  # pylint: disable=redefined-outer-name
 
     def testbench(fn, *args, **kwds):
         class Testbench(Module):
-            def construct(self):
+            def __init__(self):
                 self.clk = Input(Clock(reset='init')).as_implicit('clk')
                 self._sim_testbench_fn = fn(self, *args, **kwds)
                 next(self._sim_testbench_fn)

@@ -3,7 +3,7 @@ from .port import Port
 
 
 class Fifo(Module):
-    def construct(self, payload_type, size):
+    def __init__(self, payload_type, size):
         if payload_type.contains_flipped:
             raise TypeError(
                 'Fifo does not support bidirectional payload types')

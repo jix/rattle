@@ -4,7 +4,7 @@ from .synchronize import Synchronize
 
 
 class AsyncFifo(Module):
-    def construct(self, payload_type, size, sink_clk, source_clk):
+    def __init__(self, payload_type, size, sink_clk, source_clk):
         if payload_type.contains_flipped:
             raise TypeError(
                 'AsyncFifo does not support bidirectional payload types')

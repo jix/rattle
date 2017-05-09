@@ -1,10 +1,19 @@
-import abc
-
 from . import context
 from .error import NoModuleUnderConstruction, SignalRedefined
 from .signal import Signal
 from .circuit import Circuit
 from .names import Names
+
+
+class ModuleMeta(type):
+    def __call__(cls, *args, **kwds):
+        module = cls.__new__(cls, *args, **kwds)
+
+        ctx = context.current()
+        module._module_data = ModuleData(ctx, module)
+        with ctx.constructing_module(module):
+            module.__init__(*args, **kwds)
+        return module
 
 
 class ModuleData:
@@ -26,23 +35,13 @@ class ModuleData:
             self.parent._module_data.submodules.append(module)
 
 
-class Module(metaclass=abc.ABCMeta):
-    def __init__(self, *args, **kwds):
-        ctx = context.current()
-        self._module_data = ModuleData(ctx, self)
-        with ctx.constructing_module(self):
-            self.construct(*args, **kwds)
-
+class Module(metaclass=ModuleMeta):
     def __repr__(self):
         return "%s()" % type(self).__name__
 
     @property
     def parent(self):
         return self._module_data.parent
-
-    @abc.abstractmethod
-    def construct(self):
-        pass
 
     def reopen(self):
         return context.current().constructing_module(self)

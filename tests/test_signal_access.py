@@ -7,11 +7,11 @@ from rattle.error import InvalidSignalRead, InvalidSignalAssignment
 
 def test_wire_invalid_read():
     class Mod1(Module):
-        def construct(self):
+        def __init__(self):
             self.wire = Wire(Bool)
 
     class Mod2(Module):
-        def construct(self):
+        def __init__(self):
             self.mod1 = Mod1()
             self.wire = Wire(Bool)
             with raises(InvalidSignalRead):
@@ -21,11 +21,11 @@ def test_wire_invalid_read():
 
 def test_wire_invalid_assignment():
     class Mod1(Module):
-        def construct(self):
+        def __init__(self):
             self.wire = Wire(Bool)
 
     class Mod2(Module):
-        def construct(self):
+        def __init__(self):
             self.mod1 = Mod1()
             self.wire = Wire(Bool)
             with raises(InvalidSignalAssignment):
@@ -35,11 +35,11 @@ def test_wire_invalid_assignment():
 
 def test_input_outside_read():
     class Mod1(Module):
-        def construct(self):
+        def __init__(self):
             self.input = Input(Bool)
 
     class Mod2(Module):
-        def construct(self):
+        def __init__(self):
             self.mod1 = Mod1()
             self.wire = Wire(Bool)
             self.wire[:] = self.mod1.input
@@ -48,7 +48,7 @@ def test_input_outside_read():
 
 def test_input_invalid_assignment():
     class Mod(Module):
-        def construct(self):
+        def __init__(self):
             self.input = Input(Bool)
             with raises(InvalidSignalAssignment):
                 self.input[:] = self.input
@@ -57,7 +57,7 @@ def test_input_invalid_assignment():
 
 def test_output_inside_read():
     class Mod(Module):
-        def construct(self):
+        def __init__(self):
             self.output = Output(Bool)
             self.wire = Wire(Bool)
             self.wire[:] = self.output
@@ -66,11 +66,11 @@ def test_output_inside_read():
 
 def test_output_invalid_assignment():
     class Mod1(Module):
-        def construct(self):
+        def __init__(self):
             self.output = Output(Bool)
 
     class Mod2(Module):
-        def construct(self):
+        def __init__(self):
             self.mod1 = Mod1()
             self.wire = Wire(Bool)
             with raises(InvalidSignalAssignment):

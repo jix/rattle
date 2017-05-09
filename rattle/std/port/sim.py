@@ -7,7 +7,7 @@ from .port import Port
 
 
 class SimSource(Module):
-    def construct(self, payload_type):
+    def __init__(self, payload_type):
         if payload_type.contains_flipped:
             raise TypeError(
                 'SimSource does not support bidirectional payload types')
@@ -64,7 +64,7 @@ class SimSource(Module):
 
 
 class SimSink(Module):
-    def construct(self, payload_type):
+    def __init__(self, payload_type):
         if payload_type.contains_flipped:
             raise TypeError(
                 'SimSink does not support bidirectional payload types')

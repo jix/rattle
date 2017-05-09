@@ -3,7 +3,7 @@ from rattle.attribute import Keep
 
 
 class Synchronize(Module):
-    def construct(self, signal_type, reset_value=None, stages=2):
+    def __init__(self, signal_type, reset_value=None, stages=2):
         self.din = Input(signal_type)
         self.dout = Output(signal_type)
 

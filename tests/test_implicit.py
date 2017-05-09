@@ -8,7 +8,7 @@ from rattle.implicit import Implicit
 
 def test_simple_implicit():
     class Outer(Module):
-        def construct(self):
+        def __init__(self):
             self.input = Input(Bool)
             self.output = Output(Bool)
 
@@ -18,7 +18,7 @@ def test_simple_implicit():
             self.output[:] = self.inner.output
 
     class Inner(Module):
-        def construct(self):
+        def __init__(self):
             self.output = Output(Bool)
             self.output[:] = Implicit('implicit')
 
@@ -55,14 +55,14 @@ def test_lookup_invalid_name(module):
 
 def test_shadowing_implicit():
     class Outer(Module):
-        def construct(self):
+        def __init__(self):
             self.input = Input(Bool)
 
             with Implicit.bind('implicit', self.input):
                 self.middle = Middle()
 
     class Middle(Module):
-        def construct(self):
+        def __init__(self):
             self.wire_bits = Wire(Bits(10))
             self.wire_bool = Wire(Bool)
 
@@ -76,7 +76,7 @@ def test_shadowing_implicit():
             self.inner_bool_b = Inner(Bool)
 
     class Inner(Module):
-        def construct(self, expected_type):
+        def __init__(self, expected_type):
             assert Implicit('implicit').signal_type == expected_type
 
     Outer()
@@ -84,12 +84,12 @@ def test_shadowing_implicit():
 
 def test_non_signal_implicit():
     class Outer(Module):
-        def construct(self):
+        def __init__(self):
             with Implicit.bind('implicit', 23):
                 self.inner = Inner()
 
     class Inner(Module):
-        def construct(self):
+        def __init__(self):
             assert Implicit('implicit') == 23
 
     Outer()
@@ -97,12 +97,12 @@ def test_non_signal_implicit():
 
 def test_paths_as_names():
     class Outer(Module):
-        def construct(self):
+        def __init__(self):
             with Implicit.bind('implicit.path', 23):
                 self.inner = Inner()
 
     class Inner(Module):
-        def construct(self):
+        def __init__(self):
             assert Implicit('implicit.path') == 23
 
     Outer()
@@ -112,7 +112,7 @@ def test_non_readable_signal(module):
     self = module
 
     class Inner(Module):
-        def construct(self):
+        def __init__(self):
             self.wire = Wire(Bool)
     self.inner = Inner()
 
@@ -124,12 +124,12 @@ def test_non_readable_signal(module):
 
 def test_module_scope_binds():
     class Outer(Module):
-        def construct(self):
+        def __init__(self):
             self.input = Input(Bool).as_implicit('implicit')
             self.inner = Inner()
 
     class Inner(Module):
-        def construct(self):
+        def __init__(self):
             assert Implicit('implicit').signal_type == Bool
 
     Outer()
