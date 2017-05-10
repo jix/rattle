@@ -10,6 +10,7 @@ class Context:
     def __init__(self):
         self.__module = None
         self.__sim = None
+        self.__build = None
 
     @property
     def module(self):
@@ -27,6 +28,17 @@ class Context:
     @property
     def sim_active(self):
         return self.__sim is not None
+
+    @property
+    def build(self):
+        if self.__build is None:
+            # TODO Better exception
+            raise RuntimeError('no build active')
+        return self.__build
+
+    @property
+    def build_active(self):
+        return self.__build is not None
 
     @contextmanager
     def constructing_module(self, module):
@@ -55,6 +67,17 @@ class Context:
             yield
         finally:
             self.__sim = None
+
+    @contextmanager
+    def activate_build(self, build):
+        if self.__build is not None:
+            raise RuntimeError('builds cannot be nested')
+
+        self.__build = build
+        try:
+            yield
+        finally:
+            self.__build = None
 
 
 def current():

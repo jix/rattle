@@ -1,16 +1,17 @@
 import subprocess
 import sys
 import shlex
-import shutil
 import textwrap
 import pickle
 import re
+import hashlib
 from contextlib import contextmanager
 from pathlib import Path
 
-from .build import Build
-from ..visitor import visitor
-from ..attribute import BuildAttribute, IO, Keep, VerilogSignalAttribute
+from .ipcore import IpCore
+from ..build import Build
+from ...visitor import visitor
+from ...attribute import BuildAttribute, IO, Keep, VerilogSignalAttribute
 
 
 class XdcConstraint(BuildAttribute):
@@ -30,6 +31,10 @@ class VivadoBuild(Build):
         self.constraints = []
 
         super().generate_sources()
+
+        self.clear_dir(self.build_dir / 'ipcore')
+
+        self.postprocess_module(self.top_module)
 
         with (self.build_dir / 'constraints.xdc').open('w') as file:
             for line in self.constraints:
@@ -66,12 +71,34 @@ class VivadoBuild(Build):
         for constraint in attribute.constraints:
             self.constraints.append(constraint.format(**fields))
 
+    @visitor
+    def postprocess_module(self, module):
+        for submodule in module._module_data.submodules:
+            self.postprocess_module(submodule)
+
+    @postprocess_module.on(IpCore)
+    def postprocess_module(self, module):
+        ipcore_dir = self.build_dir / 'ipcore'
+        ipcore_dir.mkdir(exist_ok=True)
+
+        name = module._module_data.module_name
+
+        with (ipcore_dir / ('%s.tcl' % name)).open('w') as script_file:
+            script_file.write(
+                'set ipcore_name %s\n' % self.tcl_escape(name))
+            script_file.write(module._ipcore_script)
+            script_file.write('\n')
+            script_file.write(
+                'set_property generate_synth_checkpoint false'
+                ' [get_files [get_property IP_FILE [get_ips $ipcore_name]]]\n')
+            script_file.write(
+                'generate_target synthesis'
+                ' [get_files [get_property IP_FILE [get_ips $ipcore_name]]]\n')
+
     def build(self):
-        self.get_vivado_environment()
         project_dir = self.build_dir / 'vivado'
 
-        if project_dir.exists():
-            shutil.rmtree(str(project_dir))
+        self.clear_dir(project_dir)
 
         project_dir.mkdir()
 
@@ -99,6 +126,10 @@ class VivadoBuild(Build):
         self.vivado_cmd(
             'set_property top %s [get_filesets sources_1]' %
             self.tcl_escape(self.top_module_name))
+
+        for file in sorted((self.build_dir / 'ipcore').glob('*.tcl')):
+            self.vivado_cmd('source -notrace %s' % self.tcl_escape(
+                Path('..') / file.relative_to(self.build_dir)))
 
         # TODO is this needed?
         self.vivado_cmd(
@@ -130,6 +161,7 @@ class VivadoBuild(Build):
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             universal_newlines=True,
+            cwd=str(self.build_dir),
             env=self.env)
 
         self.vivado.stdin.write(textwrap.dedent('''
@@ -166,6 +198,7 @@ class VivadoBuild(Build):
 
     def vivado_cmd(self, command):
         if self.vivado is None:
+            self.get_vivado_environment()
             self.launch_vivado()
 
         print("> " + command)
@@ -218,3 +251,64 @@ class VivadoBuild(Build):
             shlex.quote(get_env_src)])
 
         self.env = pickle.loads(env.split(b'--env--', 1)[1])
+
+    def get_ipcore_xml(self, ipcore_script):
+        script_hash = hashlib.sha224(ipcore_script.encode('utf-8')).hexdigest()
+
+        try:
+            return self.cache_get('ipcore', script_hash)
+        except KeyError:
+            pass
+
+        tmp_dir = self.build_dir / 'vivado_tmp'
+
+        tmp_dir.mkdir(exist_ok=True)
+
+        script_path = tmp_dir / 'ipcore.tcl'
+
+        with script_path.open('w') as script_file:
+            script_file.write('set ipcore_name ipcore\n')
+            script_file.write(ipcore_script)
+            script_file.write('\n')
+            script_file.write('return [get_property IP_FILE [get_ips ipcore]]')
+
+        self.vivado_cmd('cd %s' % self.tcl_escape(tmp_dir))
+
+        self.vivado_cmd(
+            'create_project -in_memory -part %s tmp_project .' %
+            self.tcl_escape(self.part))
+
+        xci_path = Path(self.vivado_cmd('source -notrace ipcore.tcl'))
+
+        with xci_path.with_suffix('.xml').open('rb') as xml_file:
+            xml = xml_file.read()
+
+        self.vivado_cmd('close_project')
+        self.vivado_cmd('cd %s' % self.tcl_escape(self.build_dir))
+
+        self.clear_dir(tmp_dir)
+
+        self.cache_put('ipcore', script_hash, xml)
+
+        return xml
+
+    def cache_put(self, cache, key, value):
+        cache_dir = self.build_dir / 'cache' / cache
+        cache_dir.mkdir(exist_ok=True, parents=True)
+
+        with (cache_dir / key).open('wb') as file:
+            file.write(value)
+
+    def cache_get(self, cache, key):
+        try:
+            with (self.build_dir / 'cache' / cache / key).open('rb') as file:
+                return file.read()
+        except FileNotFoundError:
+            pass
+        raise KeyError('no cache entry found in %s cache' % cache)
+
+
+__all__ = [
+    'XdcConstraint',
+    'VivadoBuild',
+]

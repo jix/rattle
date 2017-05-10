@@ -2,6 +2,7 @@ import abc
 import argparse
 import subprocess
 import os
+import shutil
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from ..primitive import PrimSlice, PrimStorage
 from ..signal import Signal
 from ..module import Module
 from ..type import Bits
+from .. import context
 
 
 class Build(metaclass=abc.ABCMeta):
@@ -30,7 +32,8 @@ class Build(metaclass=abc.ABCMeta):
         self.parser.add_argument(
             '-B', '--no-build', action='store_true')
 
-        self.cli_main()
+        with context.current().activate_build(self):
+            self.cli_main()
 
     @abc.abstractmethod
     def build(self):
@@ -219,3 +222,11 @@ class Build(metaclass=abc.ABCMeta):
             yield
         finally:
             os.chdir(old_dir)
+
+    def clear_dir(self, path):
+        path = Path(path)
+        # This ensures we don't do nasty things by accident
+        path.relative_to(self.build_dir)
+
+        if path.exists():
+            shutil.rmtree(str(path))
