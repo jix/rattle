@@ -20,7 +20,7 @@ class BoolType(BasicType):
             pass
         else:
             return Bool._from_prim(PrimConst(bv(value)))
-        super()._const_signal(value, implicit=implicit)
+        return super()._const_signal(value, implicit=implicit)
 
     @property
     def _prim_width(self):
