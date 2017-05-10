@@ -65,7 +65,7 @@ class Names:
         name = self._make_unique(name)
         self.used_names.add(name)
         self.module_to_name[module] = name
-        module._module_data.name = name
+        module._module_data.instance_name = name
 
         subnames = module._module_data.names
 

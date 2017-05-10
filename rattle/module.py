@@ -25,7 +25,8 @@ class ModuleData:
         self.storage_prims = []
         self.circuit = Circuit()
         self.names = Names()
-        self.name = None
+        self.instance_name = None
+        self.module_name = None
         self.attributes = []
         try:
             self.parent = ctx.module

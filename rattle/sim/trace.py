@@ -19,7 +19,7 @@ class Trace:
 
         current_module = module
         while current_module is not None:
-            module_name = current_module._module_data.name
+            module_name = current_module._module_data.instance_name
             if module_name is None:
                 break
 

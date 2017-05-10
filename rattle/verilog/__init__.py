@@ -35,9 +35,9 @@ class Verilog(VerilogTemplates):
 
     def __init__(self, module, module_sources=None):
         # TODO make this adjustable / include parameters
-        self.module_name = type(module).__name__
         self.module = module
         self.module_data = module._module_data
+        self.module_data.module_name = type(module).__name__
         self.circuit = self.module_data.circuit
         self.names = self.module_data.names
         self.out = io.StringIO()
@@ -110,7 +110,7 @@ class Verilog(VerilogTemplates):
 
     @_attribute.on(ModuleName)
     def _attribute(self, attribute):
-        self.module_name = attribute.name
+        self.module_data.module_name = attribute.name
         self.unique_module_name = attribute.unique
 
     @_attribute.on(VerilogParameters)
@@ -415,7 +415,7 @@ class Verilog(VerilogTemplates):
         self._writeln('// module instantiations')
         for submodule, verilog in self.submodule_verilogs.items():
             submodule_data = submodule._module_data
-            self._write(verilog.module_name, ' ')
+            self._write(submodule_data.module_name, ' ')
             if verilog.parameters is not None:
                 self._write('#(')
                 self.indent += 1
@@ -565,20 +565,22 @@ class Verilog(VerilogTemplates):
     def _store(self):
         source_id = (type(self.module), self.source)
         try:
-            self.module_name = self.module_sources.sources[source_id]
+            self.module_data.module_name = (
+                self.module_sources.sources[source_id])
             return
         except KeyError:
             pass
 
         self._find_unique_name()
 
-        self.module_sources.sources[source_id] = self.module_name
+        self.module_sources.sources[source_id] = (
+            self.module_data.module_name)
 
     def _find_unique_name(self):
-        unique_name = self.module_name
+        unique_name = self.module_data.module_name
         counter = 0
         while unique_name in self.module_sources.names:
             counter += 1
-            unique_name = '%s_%i' % (self.module_name, counter)
-        self.module_name = unique_name
-        self.module_sources.names.add(self.module_name)
+            unique_name = '%s_%i' % (self.module_data.module_name, counter)
+        self.module_data.module_name = unique_name
+        self.module_sources.names.add(unique_name)

@@ -115,7 +115,7 @@ class Build(metaclass=abc.ABCMeta):
 
         self.verilog_files = sorted(paths)
 
-        self.top_module_name = verilog_gen.module_name
+        self.top_module_name = self.top_module._module_data.module_name
 
         with (self.build_dir / 'top_module').open('w') as f:
             f.write('%s\n' % self.top_module_name)
@@ -197,7 +197,7 @@ class Build(metaclass=abc.ABCMeta):
 
         current_module = module
         while current_module.parent is not None:
-            module_name = current_module._module_data.name
+            module_name = current_module._module_data.instance_name
             path.append(module_name)
             current_module = current_module._module_data.parent
 
