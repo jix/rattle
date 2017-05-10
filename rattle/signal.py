@@ -53,7 +53,7 @@ class Signal(metaclass=abc.ABCMeta):
 
         for key, (flip, *_) in self.signal_type._prim_shape.items():
             lvalue, rvalue = self._prims[key], value._prims[key]
-            if flip:
+            if flip is True:
                 lvalue, rvalue = rvalue, lvalue
 
             lvalue.lower_and_add_to_circuit(
