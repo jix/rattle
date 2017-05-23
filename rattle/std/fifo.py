@@ -17,20 +17,15 @@ class Fifo(Module):
         self.sink = Input(Port(payload_type))
         self.source = Output(Port(payload_type))
 
-        self.memory = Reg(Vec(size, Packed(payload_type)))
+        self.memory = Reg(Vec(size, Packed(payload_type)), init=None)
 
-        self.read_ptr = Reg(UInt(addr_width + 1))
-        self.write_ptr = Reg(UInt(addr_width + 1))
+        self.read_ptr = Reg(UInt(addr_width + 1), init=0)
+        self.write_ptr = Reg(UInt(addr_width + 1), init=0)
 
-        self.read_data = Reg(Packed(payload_type))
-        self.read_valid = Reg(Bool)
+        self.read_data = Reg(Packed(payload_type), init=None)
+        self.read_valid = Reg(Bool, init=False)
 
         self.write_data = Wire(Packed(payload_type))
-
-        with reset:
-            self.read_ptr[:] = 0
-            self.write_ptr[:] = 0
-            self.read_valid[:] = False
 
         # read
 

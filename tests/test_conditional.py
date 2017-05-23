@@ -18,9 +18,9 @@ class MockCircuit:
 def test_single_when(module):
     self = module
     self._module_data.circuit = circuit = MockCircuit()
-    self.reg = Reg(Bits(10))
+    self.reg = Reg(Bits(10), init=None)
     self.condition = Input(Bool)
-    self.reg2 = Reg(Bool)
+    self.reg2 = Reg(Bool, init=None)
 
     with when(self.condition):
         self.reg[:] = self.reg ^ Bits['1010101010']
@@ -35,7 +35,7 @@ def test_single_when(module):
 def test_when_otherwise(module):
     self = module
     self._module_data.circuit = circuit = MockCircuit()
-    self.reg = Reg(Bits(10))
+    self.reg = Reg(Bits(10), init=None)
     self.condition = Input(Bool)
 
     with when(self.condition):
@@ -52,7 +52,7 @@ def test_when_otherwise(module):
 def test_when_elwhen(module):
     self = module
     self._module_data.circuit = circuit = MockCircuit()
-    self.reg = Reg(Bits(10))
+    self.reg = Reg(Bits(10), init=None)
     self.condition_a = Input(Bool)
     self.condition_b = Input(Bool)
 
@@ -73,7 +73,7 @@ def test_when_elwhen(module):
 def test_when_elwhen_otherwise(module):
     self = module
     self._module_data.circuit = circuit = MockCircuit()
-    self.reg = Reg(Bits(10))
+    self.reg = Reg(Bits(10), init=None)
     self.condition_a = Input(Bool)
     self.condition_b = Input(Bool)
 
@@ -100,7 +100,7 @@ def test_when_elwhen_otherwise(module):
 def test_nested_when(module):
     self = module
     self._module_data.circuit = circuit = MockCircuit()
-    self.reg = Reg(Bits(10))
+    self.reg = Reg(Bits(10), init=None)
     self.condition_a = Input(Bool)
     self.condition_b = Input(Bool)
     self.condition_c = Input(Bool)
@@ -136,7 +136,7 @@ def test_implicit_reopening(module):
     class SubModule(Module):
         def __init__(self):
             self.output = Output(UInt(8))
-            self.reg = Reg(UInt(8))
+            self.reg = Reg(UInt(8), init=None)
 
             self.reg[:] = self.reg + 1
 

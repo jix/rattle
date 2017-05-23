@@ -9,8 +9,8 @@ from rattle.opt.reduce_bit_widths import ReduceBitWidths
 def test_reduce_simple_not(module):
     self = module
 
-    self.a = Reg(UInt(8))
-    self.b = Reg(UInt(10))
+    self.a = Reg(UInt(8), init=None)
+    self.b = Reg(UInt(10), init=None)
 
     self.a[:] = ~self.b
 
@@ -25,9 +25,9 @@ def test_reduce_simple_not(module):
 def test_reduce_simple_add(module):
     self = module
 
-    self.a = Reg(UInt(8))
-    self.b = Reg(UInt(8))
-    self.c = Reg(UInt(10))
+    self.a = Reg(UInt(8), init=None)
+    self.b = Reg(UInt(8), init=None)
+    self.c = Reg(UInt(10), init=None)
 
     self.a[:] = self.b + self.c
 
@@ -42,8 +42,8 @@ def test_reduce_simple_add(module):
 def test_reduce_simple_extend_short(module):
     self = module
 
-    self.a = Reg(UInt(8))
-    self.b = Reg(SInt(10))
+    self.a = Reg(UInt(8), init=None)
+    self.b = Reg(SInt(10), init=None)
 
     self.a[:] = self.b.extend(32)
 
@@ -58,8 +58,8 @@ def test_reduce_simple_extend_short(module):
 def test_reduce_simple_extend_wide(module):
     self = module
 
-    self.a = Reg(UInt(10))
-    self.b = Reg(SInt(8))
+    self.a = Reg(UInt(10), init=None)
+    self.b = Reg(SInt(8), init=None)
 
     self.a[:] = self.b.extend(32)
 
@@ -74,8 +74,8 @@ def test_reduce_simple_extend_wide(module):
 def test_reduce_simple_slice(module):
     self = module
 
-    self.a = Reg(UInt(8))
-    self.b = Reg(SInt(32))
+    self.a = Reg(UInt(8), init=None)
+    self.b = Reg(SInt(32), init=None)
 
     self.a[:] = self.b[2:].as_uint()
 
@@ -90,9 +90,9 @@ def test_reduce_simple_slice(module):
 def test_reduce_multiple_readers_not(module):
     self = module
 
-    self.a = Reg(UInt(8))
-    self.b = Reg(UInt(10))
-    self.c = Reg(UInt(32))
+    self.a = Reg(UInt(8), init=None)
+    self.b = Reg(UInt(10), init=None)
+    self.c = Reg(UInt(32), init=None)
 
     self.a[:] = ~self.c
     self.b[:] = ~self.c

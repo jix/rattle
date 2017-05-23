@@ -7,7 +7,7 @@ class Synchronize(Module):
         self.din = Input(signal_type)
         self.dout = Output(signal_type)
 
-        self.regs = Reg(Vec(stages, signal_type))
+        self.regs = Reg(Vec(stages, signal_type), init=None)
 
         if reset_value is not None:
             with reset:

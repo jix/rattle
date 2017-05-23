@@ -28,29 +28,20 @@ class AsyncFifo(Module):
         self.source = Output(Port(payload_type))
 
         with self.sink_clk:
-            self.memory = Reg(Vec(size, Packed(payload_type)))
-            self.write_ptr = Reg(Ptr)
-            self.write_ptr_next = Reg(Ptr)
-            self.write_ptr_gray = Reg(Ptr)
+            self.memory = Reg(Vec(size, Packed(payload_type)), init=None)
+            self.write_ptr = Reg(Ptr, init=0)
+            self.write_ptr_next = Reg(Ptr, init=1)
+            self.write_ptr_gray = Reg(Ptr, init=0)
             self.read_ptr_gray_synced = Wire(Ptr)
             self.write_data = Wire(Packed(payload_type))
 
         with self.source_clk:
-            self.read_ptr = Reg(Ptr)
-            self.read_ptr_next = Reg(Ptr)
-            self.read_ptr_gray = Reg(Ptr)
+            self.read_ptr = Reg(Ptr, init=0)
+            self.read_ptr_next = Reg(Ptr, init=1)
+            self.read_ptr_gray = Reg(Ptr, init=0)
             self.write_ptr_gray_synced = Wire(Ptr)
-            self.read_data = Reg(Packed(payload_type))
-            self.read_valid = Reg(Bool)
-
-        with reset:
-            self.read_ptr[:] = 0
-            self.read_ptr_gray[:] = 0
-            self.read_ptr_next[:] = 1
-            self.write_ptr[:] = 0
-            self.write_ptr_gray[:] = 0
-            self.write_ptr_next[:] = 1
-            self.read_valid[:] = False
+            self.read_data = Reg(Packed(payload_type), init=None)
+            self.read_valid = Reg(Bool, init=False)
 
         with self.sink_clk:
             self.sync_read_ptr = Synchronize(Ptr, reset_value=0)

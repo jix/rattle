@@ -10,7 +10,7 @@ from rattle.opt.lower_sync_reset import LowerSyncReset
 def test_lower_sync_reset(module):
     self = module
 
-    self.test = Reg(Bool)
+    self.test = Reg(Bool, init=None)
 
     with reset:
         self.test[:] = False

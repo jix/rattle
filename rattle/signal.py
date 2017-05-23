@@ -270,7 +270,7 @@ def _make_storage(signal_type, direction=None, wrap_prims=None):
     return signal
 
 
-def _make_reg(signal_type, clk=None, direction=None):
+def _make_reg(signal_type, *, init, clk=None, direction=None):
     from .type.clock import Clock
     from .implicit import Implicit
 
@@ -297,7 +297,14 @@ def _make_reg(signal_type, clk=None, direction=None):
     def wrap_reg(module, prim):
         return PrimReg(clk_prim, en_prim, reset_prim, clock_type.reset, prim)
 
-    return _make_storage(signal_type, direction=direction, wrap_prims=wrap_reg)
+    reg = _make_storage(signal_type, direction=direction, wrap_prims=wrap_reg)
+
+    if init is not None:
+        from .conditional import reset
+        with reset:
+            reg[:] = init
+
+    return reg
 
 
 def _wrap_assign_x(module, prim):
@@ -343,12 +350,12 @@ def Output(signal_type):
         signal_type, direction='output', wrap_prims=_wrap_assign_x)
 
 
-def Reg(signal_type, clk=None):
-    return _make_reg(signal_type, clk=clk)
+def Reg(signal_type, *, init, clk=None):
+    return _make_reg(signal_type, init=init, clk=clk)
 
 
-def OutputReg(signal_type, clk=None):
-    return _make_reg(signal_type, clk=clk, direction='output')
+def OutputReg(signal_type, *, init, clk=None):
+    return _make_reg(signal_type, init=init, clk=clk, direction='output')
 
 
 __all__ = [

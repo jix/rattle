@@ -57,8 +57,8 @@ def test_basic_enum(sim_testbench):
 
     @sim_testbench
     def _testbench(self):
-        self.x = Reg(E)
-        self.y = Reg(E)
+        self.x = Reg(E, init=None)
+        self.y = Reg(E, init=None)
 
         self.x_is_C = Wire(Bool)
 
@@ -149,11 +149,11 @@ def test_enum_data(enum_type, sim_testbench):
 
     @sim_testbench
     def _testbench(self):
-        self.p = Reg(E)
+        self.p = Reg(E, init=None)
 
-        self.x = Reg(Bool)
-        self.y = Reg(Bool)
-        self.z = Reg(UInt(32))
+        self.x = Reg(Bool, init=None)
+        self.y = Reg(Bool, init=None)
+        self.z = Reg(UInt(32), init=None)
 
         with self.p.A as a:
             self.x[:] = a.x
