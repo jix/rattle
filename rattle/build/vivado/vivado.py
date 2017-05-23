@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from .ipcore import IpCore
+from .blockdesign import BlockDesign
 from ..build import Build
 from ...visitor import visitor
 from ...attribute import BuildAttribute, IO, Keep, VerilogSignalAttribute
@@ -95,6 +96,21 @@ class VivadoBuild(Build):
                 'generate_target synthesis'
                 ' [get_files [get_property IP_FILE [get_ips $ipcore_name]]]\n')
 
+    @postprocess_module.on(BlockDesign)
+    def postprocess_module(self, module):
+        block_design_dir = self.build_dir / 'block_design'
+        block_design_dir.mkdir(exist_ok=True)
+
+        name = module._module_data.module_name
+
+        with (block_design_dir / ('%s.tcl' % name)).open('w') as script_file:
+            script_file.write('create_bd_design %s\n' % self.tcl_escape(name))
+            script_file.write(module._tcl_script)
+            script_file.write('\n')
+            script_file.write(
+                'set_property GENERATE_SYNTH_CHECKPOINT 0 [get_files '
+                '[get_property FILE_NAME [current_bd_design]]]\n')
+
     def build(self):
         project_dir = self.build_dir / 'vivado'
 
@@ -127,9 +143,10 @@ class VivadoBuild(Build):
             'set_property top %s [get_filesets sources_1]' %
             self.tcl_escape(self.top_module_name))
 
-        for file in sorted((self.build_dir / 'ipcore').glob('*.tcl')):
-            self.vivado_cmd('source -notrace %s' % self.tcl_escape(
-                Path('..') / file.relative_to(self.build_dir)))
+        for script_type in ['ipcore', 'block_design']:
+            for file in sorted((self.build_dir / script_type).glob('*.tcl')):
+                self.vivado_cmd('source -notrace %s' % self.tcl_escape(
+                    Path('..') / file.relative_to(self.build_dir)))
 
         # TODO is this needed?
         self.vivado_cmd(
@@ -196,7 +213,7 @@ class VivadoBuild(Build):
         if self.vivado is not None:
             self.terminate_vivado()
 
-    def vivado_cmd(self, command):
+    def vivado_cmd(self, command, capture=False):
         if self.vivado is None:
             self.get_vivado_environment()
             self.launch_vivado()
@@ -205,6 +222,8 @@ class VivadoBuild(Build):
         self.vivado.stdin.write('rattle_build %s\n' % command)
         self.vivado.stdin.flush()
 
+        captured = []
+
         while True:
             line = self.vivado.stdout.readline()
             if not line:
@@ -212,7 +231,10 @@ class VivadoBuild(Build):
             elif line == '///RATTLE BUILD/// result\n':
                 break
             else:
-                print(line[:-1])
+                if capture:
+                    captured.append(line)
+                else:
+                    print(line[:-1])
 
         status = int(self.vivado.stdout.readline().strip())
 
@@ -232,7 +254,10 @@ class VivadoBuild(Build):
         if status:
             raise RuntimeError("Vivado tcl error: %s" % result)
 
-        return result
+        if capture:
+            return ''.join(captured), result
+        else:
+            return result
 
     @staticmethod
     def tcl_escape(string):
@@ -292,17 +317,79 @@ class VivadoBuild(Build):
 
         return xml
 
-    def cache_put(self, cache, key, value):
+    def get_block_design_ports(self, block_design_script):
+        script_hash = hashlib.sha224(
+            block_design_script.encode('utf-8')).hexdigest()
+
+        try:
+            return self.cache_get('block_design', script_hash, binary=False)
+        except KeyError:
+            pass
+
+        tmp_dir = self.build_dir / 'vivado_tmp'
+
+        tmp_dir.mkdir(exist_ok=True)
+
+        script_path = tmp_dir / 'block_design.tcl'
+
+        with script_path.open('w') as script_file:
+            script_file.write(block_design_script)
+            script_file.write(textwrap.dedent('''
+                proc descr_bd_port {port} {
+                    set dir [get_property DIR $port]
+                    set left [get_property LEFT $port]
+                    set right [get_property RIGHT $port]
+                    puts "port $port $dir $left $right"
+                }
+                proc descr_bd {} {
+                    foreach intf [get_bd_intf_ports] {
+                        set mode [get_property MODE $intf]
+                        puts "intf $intf $mode"
+                        foreach port [get_bd_ports -of_objects $intf] {
+                            descr_bd_port $port
+                        }
+                    }
+                    puts "ports"
+                    foreach port [get_bd_ports] {
+                        if {[get_property INTF $port] eq FALSE} {
+                            descr_bd_port $port
+                        }
+                    }
+                }
+            ''')[1:])
+        self.vivado_cmd('cd %s' % self.tcl_escape(tmp_dir))
+
+        self.vivado_cmd(
+            'create_project -in_memory -part %s tmp_project .' %
+            self.tcl_escape(self.part))
+
+        self.vivado_cmd('source -notrace block_design.tcl')
+        self.vivado_cmd('validate_bd_design')
+        result, _return_value = self.vivado_cmd('descr_bd', capture=True)
+
+        self.vivado_cmd('close_project')
+        self.vivado_cmd('cd %s' % self.tcl_escape(self.build_dir))
+
+        self.clear_dir(tmp_dir)
+
+        self.cache_put('block_design', script_hash, result, binary=False)
+
+        return result
+
+    def cache_put(self, cache, key, value, binary=True):
         cache_dir = self.build_dir / 'cache' / cache
         cache_dir.mkdir(exist_ok=True, parents=True)
 
-        with (cache_dir / key).open('wb') as file:
+        with (cache_dir / key).open('wb' if binary else 'w') as file:
             file.write(value)
 
-    def cache_get(self, cache, key):
+    def cache_get(self, cache, key, binary=True):
+        path = (self.build_dir / 'cache' / cache / key)
         try:
-            with (self.build_dir / 'cache' / cache / key).open('rb') as file:
-                return file.read()
+            if binary:
+                return path.read_bytes()
+            else:
+                return path.read_text()
         except FileNotFoundError:
             pass
         raise KeyError('no cache entry found in %s cache' % cache)
