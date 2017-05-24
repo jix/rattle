@@ -114,7 +114,7 @@ class SimEngine:
         enqueue = (
             self._assign_queue, self._eval_assign,
             (storage, lvalue, rvalue))
-        for accessed_storage in rvalue.accessed_storage:
+        for accessed_storage in rvalue.accessed_storage or [None]:
             enqueues = self._change_enqueues.setdefault(
                 accessed_storage, [])
 
@@ -124,7 +124,7 @@ class SimEngine:
         enqueue = (
             self._combinational_queue, self._eval_combinational,
             block)
-        for accessed_storage in block.accessed_storage:
+        for accessed_storage in block.accessed_storage or [None]:
             enqueues = self._change_enqueues.setdefault(accessed_storage, [])
             enqueues.append(enqueue)
 
