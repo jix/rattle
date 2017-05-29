@@ -94,6 +94,13 @@ class VecSignal(Signal):
         return Vec(length, self.element_type)[
             [self[i] for i in range(start, start + length)]]
 
+    def _getitem_unknown(self, index):
+        res = list(self)[index]
+        if isinstance(res, list):
+            return Vec(len(res), self.element_type)[res]
+        else:
+            return res
+
     @property
     def value(self):
         return tuple(self[i].value for i in range(self.signal_type.length))

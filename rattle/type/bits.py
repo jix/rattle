@@ -206,6 +206,13 @@ class BitsLikeSignal(BasicSignal):
         return Bits(length)._from_prim(
             PrimSlice(start, length, self._prim()))
 
+    def _getitem_unknown(self, index):
+        res = [self[i] for i in range(self.width)][index]
+        if isinstance(res, list):
+            return Bits(len(res))[res]
+        else:
+            return res
+
     @property
     def value(self):
         return self._prim_value()

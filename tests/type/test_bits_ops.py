@@ -191,3 +191,12 @@ def test_bits_from_vec_list():
 
     with raises(ValueError):
         v = Bits(4)[Vec(3, Bool)[[True, True, False]]]
+
+
+def test_bits_slice_step_access_const():
+    my_bits = Bits(8)[0b10010110]
+    assert my_bits[::-1].value == 0b01101001
+    assert my_bits[1::2].width == 4
+    assert my_bits[1::2].value == 0b1001
+    assert my_bits[::-3].width == 3
+    assert my_bits[::-3].value == 0b111

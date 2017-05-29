@@ -152,3 +152,12 @@ def test_vec_packing_const():
     assert packed.signal_type == Bits(2 * 3 * 4)
     assert packed.value == bv('111010101100010111110000')
     assert unpacked.value == my_vec.value
+
+
+def test_vec_slice_step_access_const():
+    MyVec = Vec(8, Bits(8))
+    values = [1, 2, 3, 4, 5, 6, 7, 8]
+    my_vec = MyVec[values]
+    assert my_vec[::-1].value == (8, 7, 6, 5, 4, 3, 2, 1)
+    assert my_vec[1::2].value == (2, 4, 6, 8)
+    assert my_vec[::-3].value == (8, 5, 2)
