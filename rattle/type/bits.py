@@ -4,6 +4,7 @@ from ..primitive import *
 from ..error import ConversionNotImplemented
 from ..bitvec import BitVec, bv
 from ..slice import dispatch_getitem
+from ..signal import Signal
 
 
 class BitsLike(BasicType, metaclass=SignalTypeMeta):
@@ -29,6 +30,7 @@ class BitsLike(BasicType, metaclass=SignalTypeMeta):
 
     @classmethod
     def _generic_const_signal(cls, value, *, implicit):
+        from .bool import Bool
         if isinstance(value, int):
             if value < 0:
                 raise ValueError(
@@ -40,8 +42,20 @@ class BitsLike(BasicType, metaclass=SignalTypeMeta):
 
         if isinstance(value, BitVec):
             return Bits(value.width)._from_prim(PrimConst(value))
+        elif isinstance(value, (tuple, list)) and not implicit:
+            value = [Bool[x] for x in value]
+            return Bits(len(value))._from_prim(
+                PrimConcat([x._prim() for x in value]))
         else:
             return super()._generic_const_signal(value, implicit=implicit)
+
+    @classmethod
+    def _generic_convert(cls, signal, *, implicit):
+        from .vec import Vec
+        from .bool import Bool
+        if Signal.isinstance(signal, Vec) and signal.element_type == Bool:
+            return cls[list(signal)]
+        return super()._generic_convert(signal, implicit=implicit)
 
     def _const_signal(self, value, *, implicit):
         if isinstance(value, int):
@@ -61,8 +75,20 @@ class BitsLike(BasicType, metaclass=SignalTypeMeta):
                 raise ValueError(
                     "constant of wrong size (%i) for %r" % (value.width, self))
             return Bits(self.width)._from_prim(PrimConst(value))
+        elif isinstance(value, (tuple, list)) and not implicit:
+            if len(value) != self.width:
+                raise ValueError(
+                    "wrong length (%i) for %r" % (len(value), self))
+            return Bits[value]
         else:
             return super()._const_signal(value, implicit=implicit)
+
+    def _convert(self, signal, *, implicit):
+        from .vec import Vec
+        from .bool import Bool
+        if Signal.isinstance(signal, Vec) and signal.element_type == Bool:
+            return self[list(signal)]
+        return super()._convert(signal, implicit=implicit)
 
     @property
     def _prim_width(self):

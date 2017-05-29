@@ -1,5 +1,6 @@
 from hypothesis import given
 import hypothesis.strategies as st
+from pytest import raises
 from rattle.signal import *
 from rattle.type import *
 from rattle.bitvec import X, bv
@@ -160,3 +161,33 @@ def test_arith_rshift_xval_const():
     assert v.arith_rshift(UInt(4)[bv('00x0')]).value.same_as(bv('11xxx010'))
     assert v.arith_rshift(UInt(4)[bv('x000')]).value.same_as(bv('11xx1x1x'))
     assert v.arith_rshift(UInt(4)[bv('1xxx')]).value.same_as(bv('11111111'))
+
+
+def test_bits_from_bool_list_generic():
+    v = Bits[[True, True, False]]
+
+    assert v.signal_type == Bits(3)
+    assert v.value == 3
+
+
+def test_bits_from_bool_list():
+    v = Bits(4)[[Bool[True], True, True, False]]
+    assert v.value == 7
+
+    with raises(ValueError):
+        v = Bits(4)[[True, True, False]]
+
+
+def test_bits_from_bool_vec_generic():
+    v = Bits[Vec(3, Bool)[[True, True, False]]]
+
+    assert v.signal_type == Bits(3)
+    assert v.value == 3
+
+
+def test_bits_from_vec_list():
+    v = Bits(4)[Vec(4, Bool)[[True, True, True, False]]]
+    assert v.value == 7
+
+    with raises(ValueError):
+        v = Bits(4)[Vec(3, Bool)[[True, True, False]]]
