@@ -165,3 +165,6 @@ class SignalType(metaclass=SignalTypeMeta):
         packed_type = self[X].packed.signal_type
         signal = packed_type.convert(signal, implicit=True)
         return self._unpack(Unpacker(signal))
+
+    def _initialize_reg_value(self, reg):
+        pass

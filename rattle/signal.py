@@ -310,7 +310,10 @@ def _make_reg(signal_type, *, init, clk=None, direction=None):
     if init is not None:
         from .conditional import reset
         with reset:
-            reg[:] = init
+            if init is ...:
+                signal_type._initialize_reg_value(reg)
+            else:
+                reg[:] = init
 
     return reg
 
@@ -358,11 +361,11 @@ def Output(signal_type):
         signal_type, direction='output', wrap_prims=_wrap_assign_x)
 
 
-def Reg(signal_type, *, init, clk=None):
+def Reg(signal_type, *, init=..., clk=None):
     return _make_reg(signal_type, init=init, clk=clk)
 
 
-def OutputReg(signal_type, *, init, clk=None):
+def OutputReg(signal_type, *, init=..., clk=None):
     return _make_reg(signal_type, init=init, clk=clk, direction='output')
 
 

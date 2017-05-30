@@ -41,7 +41,7 @@ class AsyncFifo(Module):
             self.read_ptr_gray = Reg(Ptr, init=0)
             self.write_ptr_gray_synced = Wire(Ptr)
             self.read_data = Reg(Packed(payload_type), init=None)
-            self.read_valid = Reg(Bool, init=False)
+            self.read_valid = Reg(Bool)
 
         with self.sink_clk:
             self.sync_read_ptr = Synchronize(Ptr, reset_value=0)

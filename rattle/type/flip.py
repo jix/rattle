@@ -1,5 +1,6 @@
 from .type import SignalType, SignalTypeMeta
 from ..signal import Signal
+from ..error import InvalidSignalAssignment
 
 
 class FlipMeta(SignalTypeMeta):
@@ -52,6 +53,12 @@ class Flip(SignalType, metaclass=FlipMeta):
     def _unpack(self, unpacker):
         with unpacker.flip():
             return self.unflipped_type._unpack(unpacker)
+
+    def _initialize_reg_value(self, reg):
+        try:
+            self.unflipped_type._initialize_reg_value(reg.flipped)
+        except InvalidSignalAssignment:
+            pass
 
 
 class FlipSignal(Signal):

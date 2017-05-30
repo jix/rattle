@@ -3,6 +3,7 @@ import collections
 
 from .type import SignalType
 from ..signal import Signal
+from ..error import InvalidSignalAssignment
 
 
 class Bundle(SignalType):
@@ -74,6 +75,14 @@ class Bundle(SignalType):
         for key, field_type in self.__fields.items():
             signals[key] = field_type._unpack(unpacker)
         return self[signals]
+
+    def _initialize_reg_value(self, reg):
+        for key, field_type in self.__fields.items():
+            field = reg._getitem_raw(key)
+            try:
+                field_type._initialize_reg_value(field)
+            except InvalidSignalAssignment:
+                pass
 
 
 class BundleFields(metaclass=abc.ABCMeta):

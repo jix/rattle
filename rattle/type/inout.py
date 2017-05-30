@@ -32,6 +32,9 @@ class InOut(SignalType):
     def _unpack(self, unpacker):
         raise RuntimeError('cannot unpack InOut signal type')
 
+    def _initialize_reg_value(self, reg):
+        raise RuntimeError('cannot initialize InOut Reg')
+
 
 class InOutSignal(Signal):
     @property

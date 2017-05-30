@@ -1,5 +1,6 @@
 from rattle.prelude import *
 from rattle.type.bundle import BundleSignal
+from rattle.error import InvalidSignalAssignment
 
 
 class Port(Bundle):
@@ -17,6 +18,13 @@ class Port(Bundle):
     @property
     def _signal_class(self):
         return PortSignal
+
+    def _initialize_reg_value(self, reg):
+        reg.valid[:] = False
+        try:
+            reg.ready[:] = False
+        except InvalidSignalAssignment:
+            pass
 
 
 class PortSignal(BundleSignal):

@@ -258,6 +258,15 @@ class Enum(SignalType):
         except KeyError:
             raise AttributeError('Enum type has no attribute %r' % name)
 
+    def _initialize_reg_value(self, reg):
+        first_state, encoding = next(iter(self._states.items()))
+        values = {field: X for field in encoding.fields}
+        reg[:] = self[first_state, values]
+
+        for field, field_descr in encoding.fields.items():
+            reg_field = reg.selector(first_state)[field]
+            field_descr[-1]._initialize_reg_value(reg_field)
+
 
 class EnumState:
     def __init__(self, enum_type, state):

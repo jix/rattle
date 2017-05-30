@@ -54,3 +54,18 @@ def test_sim_sink_sim_source(sim_testbench):
             yield self.clk
 
         assert [x.value for x in self.sink.items] == items
+
+
+def test_port_reg_initialization(sim_testbench):
+    Type = Bundle(a=UInt(32), b=Bool)
+
+    @sim_testbench
+    def _testbench(self):
+        self.reg = Reg(Port(Type))
+
+        yield
+
+        assert self.reg.payload.a.value is X
+        assert self.reg.payload.b.value is X
+        assert self.reg.ready.value is False
+        assert self.reg.valid.value is False

@@ -3,13 +3,15 @@ from rattle.attribute import Keep
 
 
 class Synchronize(Module):
-    def __init__(self, signal_type, reset_value=None, stages=2):
+    def __init__(self, signal_type, reset_value=..., stages=2):
         self.din = Input(signal_type)
         self.dout = Output(signal_type)
 
-        self.regs = Reg(Vec(stages, signal_type), init=None)
+        init = ... if reset_value is ... else None
 
-        if reset_value is not None:
+        self.regs = Reg(Vec(stages, signal_type), init=init)
+
+        if reset_value is not None and init is None:
             with reset:
                 for reg in self.regs:
                     reg[:] = reset_value

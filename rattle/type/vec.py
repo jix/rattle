@@ -4,6 +4,7 @@ from ..primitive import *
 from ..slice import dispatch_getitem
 from ..bitmath import log2up
 from ..bitvec import BitVec
+from ..error import InvalidSignalAssignment
 
 
 class Vec(SignalType):
@@ -63,6 +64,13 @@ class Vec(SignalType):
             signals.append(
                 self.element_type._unpack(unpacker))
         return self[signals]
+
+    def _initialize_reg_value(self, reg):
+        try:
+            for i in range(self.length):
+                self.element_type._initialize_reg_value(reg[i])
+        except InvalidSignalAssignment:
+            pass
 
 
 class VecSignal(Signal):

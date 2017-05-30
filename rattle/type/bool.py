@@ -30,6 +30,9 @@ class BoolType(BasicType):
     def _signal_class(self):
         return BoolSignal
 
+    def _initialize_reg_value(self, reg):
+        reg[:] = Bool[False]
+
 
 Bool = BoolType()
 

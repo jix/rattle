@@ -49,6 +49,9 @@ class Packed(SignalType):
     def _unpack(self, unpacker):
         self._from_prims(self.__packed_type._unpack(unpacker)._prims)
 
+    def _initialize_reg_value(self, reg):
+        self.unpacked_type.initial_reg_value(reg.unpacked)
+
 
 class PackedSignal(Signal):
     @property

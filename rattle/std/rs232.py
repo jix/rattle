@@ -26,15 +26,12 @@ class Rs232Rx(Module):
             raise ValueError('specify either baudrate and fclk or period')
 
         self.rx = Input(Bool)
-        self.source = OutputReg(Port(Bits(bits)), init=None)
-        self.overflow = OutputReg(Bool, init=False)
+        self.source = OutputReg(Port(Bits(bits)))
+        self.overflow = OutputReg(Bool)
         self.timer = Reg(UInt(log2up(period * 2)), init=None)
-        self.bitpos = Reg(UInt(log2up(bits + 2)), init=0)
+        self.bitpos = Reg(UInt(log2up(bits + 2)))
 
         self.sync_rx = Synchronize(Bool, reset_value=1)
-
-        with reset:
-            self.source.valid[:] = False
 
         self.source.valid[:] = False
 
@@ -92,7 +89,7 @@ class Rs232Tx(Module):
         self.sink = Input(Port(Bits(bits)))
         self.timer = Reg(UInt(log2up(period)), init=period - 1)
         self.shiftreg = Reg(Bits(bits + 1), init=1)
-        self.bitpos = Reg(UInt(log2up(bits + 2)), init=0)
+        self.bitpos = Reg(UInt(log2up(bits + 2)))
 
         self.tx[:] = self.shiftreg[0]
 

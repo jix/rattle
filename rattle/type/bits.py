@@ -94,6 +94,9 @@ class BitsLike(BasicType, metaclass=SignalTypeMeta):
     def _prim_width(self):
         return self.width
 
+    def _initialize_reg_value(self, reg):
+        reg[:] = BitVec(self.width, 0)
+
 
 class BitsLikeSignal(BasicSignal):
     @property
