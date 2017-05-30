@@ -107,3 +107,30 @@ def test_bundle_packing_bidir_const():
     assert packed.signal_type == Bundle(fwd=Bits(2), bwd=Flip(Bits(9)))
     assert packed.value == {'fwd': bv('11'), 'bwd': bv('010101010')}
     assert unpacked.value == my_bundle.value
+
+
+def test_partial_bundle(sim_testbench):
+    @sim_testbench
+    def _testbench(self):
+        self.wire = Wire(Bundle(a=Bool, b=UInt(8)))
+
+        yield
+
+        self.wire[:] = bundle(a=True, b=23)
+        self.wire[:] = +bundle(a=Bool[False])
+
+        yield
+
+        assert self.wire.value == dict(a=False, b=23)
+
+        self.wire[:] = -bundle(a=Bool[True], b=UInt(8)[42], c=Bool[True])
+
+        yield
+
+        assert self.wire.value == dict(a=True, b=42)
+
+        with raises(KeyError):
+            self.wire[:] = -bundle(a=Bool[False])
+
+        with raises(KeyError):
+            self.wire[:] = +bundle(a=Bool[True], b=UInt(8)[42], c=Bool[True])

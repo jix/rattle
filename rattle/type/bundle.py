@@ -1,3 +1,4 @@
+import abc
 import collections
 
 from .type import SignalType
@@ -75,13 +76,14 @@ class Bundle(SignalType):
         return self[signals]
 
 
-class BundleSignal(Signal):
+class BundleFields(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
     def _getitem_raw(self, key):
-        item_type = self.signal_type.fields[key]
-        return item_type._from_prims({
-            k[1:]: v
-            for k, v in self._prims.items()
-            if k[0] == key})
+        pass
+
+    @abc.abstractproperty
+    def _field_names(self):
+        pass
 
     def __getitem__(self, key):
         return self._getitem_raw(key)._bundle_field_access()
@@ -91,6 +93,25 @@ class BundleSignal(Signal):
             return self[name]
         except KeyError:
             raise AttributeError()  # TODO Message
+
+    def __neg__(self):
+        return PartialBundle(self, True, False)
+
+    def __pos__(self):
+        return PartialBundle(self, False, True)
+
+
+class BundleSignal(BundleFields, Signal):
+    def _getitem_raw(self, key):
+        item_type = self.signal_type.fields[key]
+        return item_type._from_prims({
+            k[1:]: v
+            for k, v in self._prims.items()
+            if k[0] == key})
+
+    @property
+    def _field_names(self):
+        return set(self.signal_type.fields.keys())
 
     @property
     def value(self):
@@ -109,7 +130,7 @@ class BundleSignal(Signal):
             self._getitem_raw(key)._pack(packer)
 
 
-class BundleHelper:
+class BundleHelper(BundleFields):
     def __init__(self, values):
         self._values = values
 
@@ -117,7 +138,12 @@ class BundleHelper:
         return 'bundle(%s)' % (
             ', '.join('%s=%r' % item for item in self._values.items()))
 
-    # TODO Partial Bundle API
+    def _getitem_raw(self, key):
+        return self._values[key]
+
+    @property
+    def _field_names(self):
+        return set(self._values.keys())
 
 
 def bundle(**kwds):
@@ -128,3 +154,34 @@ def bundle(**kwds):
         return signal_type[kwds]
     else:
         return BundleHelper(kwds)
+
+
+class PartialBundle:
+    def __init__(self, value, allow_extra, allow_missing):
+        if not isinstance(value, BundleFields):
+            raise TypeError('value needs to implement BundleFields')
+        self._value = value
+        self._allow_extra, self._allow_missing = allow_extra, allow_missing
+
+    def _assign_to_signal(self, signal):
+        if not Signal.isinstance(signal, Bundle):
+            return False
+
+        lvalue_field_names = signal._field_names
+        rvalue_field_names = self._value._field_names
+
+        if not self._allow_missing:
+            missing = lvalue_field_names - rvalue_field_names
+            if missing:
+                raise KeyError(
+                    'assigned bundle is missing fields %r' % (tuple(missing),))
+        if not self._allow_extra:
+            extra = rvalue_field_names - lvalue_field_names
+            if extra:
+                raise KeyError(
+                    'assigned bundle has extra fields %r' % (tuple(extra),))
+
+        for field in sorted(lvalue_field_names & rvalue_field_names):
+            signal._getitem_raw(field)[:] = self._value._getitem_raw(field)
+
+        return True

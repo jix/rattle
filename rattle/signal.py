@@ -40,6 +40,17 @@ class Signal(metaclass=abc.ABCMeta):
             return isinstance(signal.signal_type, signal_type)
 
     def assign(self, value):
+        try:
+            value = self.signal_type.convert(value, implicit=True)
+        except ConversionNotImplemented:
+            try:
+                assign_fn = value._assign_to_signal
+            except AttributeError:
+                pass
+            else:
+                if assign_fn(self):
+                    return
+            raise
         ctx = context.current()
         if ctx.sim_active:
             self._sim_assign(value, ctx.sim)
@@ -47,7 +58,6 @@ class Signal(metaclass=abc.ABCMeta):
         module_data = ctx.module._module_data
         condition = module_data.condition_stack.current_conditions()
         is_reset = module_data.condition_stack.is_reset()
-        value = self.signal_type.convert(value, implicit=True)
         self._access(write=True)
         value._access(write=False)
 
@@ -78,8 +88,6 @@ class Signal(metaclass=abc.ABCMeta):
                     raise InvalidSignalRead  # TODO Message
 
     def _sim_assign(self, value, sim_context):
-        value = self.signal_type.convert(value, implicit=True)
-
         for key, (flip, *_) in self.signal_type._prim_shape.items():
             lvalue, rvalue = self._prims[key], value._prims[key]
             if flip:
