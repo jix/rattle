@@ -97,11 +97,9 @@ class PrimSignal(metaclass=PrimMeta):
             return
         rvalue = rvalue.simplify_read()
         if self.dimensions:
-            index_width = log2up(self.dimensions[-1])
             for i in range(self.dimensions[-1]):
-                index = PrimConst(BitVec(index_width, i))
-                yield from PrimIndex(index, self).split_assignment(
-                    condition, PrimIndex(index, rvalue))
+                yield from PrimIndex(i, self).split_assignment(
+                    condition, PrimIndex(i, rvalue))
         else:
             yield from self.split_scalar(condition, rvalue)
 
@@ -291,9 +289,13 @@ class PrimReg(PrimValue):
 
 class PrimIndex(PrimValue):
     def __init__(self, index, x):
-        index = index.simplify_read()
-        assert index.dimensions == ()
-        assert index.width == log2up(x.dimensions[-1])
+        index_width = log2up(x.dimensions[-1])
+        if isinstance(index, int):
+            index = PrimConst(BitVec(index_width, index))
+        else:
+            index = index.simplify_read()
+            assert index.dimensions == ()
+            assert index.width == index_width
         super().__init__(
             width=x.width,
             dimensions=x.dimensions[:-1])

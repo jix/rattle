@@ -87,8 +87,7 @@ class VecSignal(Signal):
         return self
 
     def _getitem_const_index(self, index):
-        index_width = log2up(len(self))
-        return self._getitem_prim(PrimConst(BitVec(index_width, index)))
+        return self._getitem_prim(index)
 
     def _getitem_dynamic_index(self, index):
         return self._getitem_prim(index._prim())

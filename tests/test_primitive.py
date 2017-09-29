@@ -40,15 +40,12 @@ def test_lower_vector_to_scalars():
     a, b = mkvars('a b', dimensions=(4,))
     c = mkvars('c')
 
-    def index(v):
-        return PrimConst(BitVec(2, v))
-
     lowered = list(a.lower_assignment(((True, c),), b))
     assert lowered == [
-        (a, PrimIndex(index(0), a), ((True, c),), PrimIndex(index(0), b)),
-        (a, PrimIndex(index(1), a), ((True, c),), PrimIndex(index(1), b)),
-        (a, PrimIndex(index(2), a), ((True, c),), PrimIndex(index(2), b)),
-        (a, PrimIndex(index(3), a), ((True, c),), PrimIndex(index(3), b)),
+        (a, PrimIndex(0, a), ((True, c),), PrimIndex(0, b)),
+        (a, PrimIndex(1, a), ((True, c),), PrimIndex(1, b)),
+        (a, PrimIndex(2, a), ((True, c),), PrimIndex(2, b)),
+        (a, PrimIndex(3, a), ((True, c),), PrimIndex(3, b)),
     ]
 
 
