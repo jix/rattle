@@ -67,6 +67,24 @@ class PrimSignal(metaclass=PrimMeta):
     def allowed_writers(self):
         pass
 
+    def lower_inout_and_add_to_circuit(
+            self, condition, rvalue, circuit, reset):
+        if self.width == 0:
+            return
+        if condition != () or reset:
+            # TODO Change exception type
+            raise RuntimeError(
+                "InOut ports may only be connected unconditionally")
+
+        # TODO Additional checks?
+
+        if self.dimensions:
+            for i in range(self.dimensions[-1]):
+                PrimIndex(i, self).lower_inout_and_add_to_circuit(
+                    condition, PrimIndex(i, rvalue), circuit, reset)
+        else:
+            circuit.add_inout(self, rvalue)
+
     def lower_and_add_to_circuit(self, condition, rvalue, circuit, reset):
         if self.width == 0:
             return
@@ -285,6 +303,37 @@ class PrimReg(PrimValue):
     def map(self, map_fn):
         return type(self)(
             self.clk, self.en, self.reset, self.reset_mode, map_fn(self.x))
+
+
+class PrimInOut(PrimValue):
+    def __init__(self, x):
+        assert isinstance(x, PrimStorage)
+        super().__init__(width=x.width, dimensions=x.dimensions)
+        self.x = x
+
+    def tuple(self):
+        return (self.x,)
+
+    def simplify_read(self):
+        return self.x
+
+    @property
+    def allowed_readers(self):
+        return self.x.allowed_readers
+
+    @property
+    def allowed_writers(self):
+        return self.x.allowed_writers
+
+    @property
+    def accessed_storage(self):
+        return self.x.accessed_storage
+
+    def __iter__(self):
+        yield self.x
+
+    def map(self, map_fn):
+        return type(self)(map_fn(self.x))
 
 
 class PrimIndex(PrimValue):
@@ -903,6 +952,7 @@ __all__ = [
     'PrimStorage',
     'PrimValue',
     'PrimReg',
+    'PrimInOut',
     'PrimIndex',
     'PrimNot',
     'PrimConcat',

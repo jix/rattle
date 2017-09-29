@@ -4,11 +4,12 @@ from itertools import product
 from collections import OrderedDict
 from pathlib import Path
 
-from ..circuit import BlockAssign, BlockCond
-from ..visitor import visitor
 from ..attribute import (
     SimulationOnly, DoNotGenerate, ModuleName,
     VerilogParameters, VerilogSignalAttribute)
+from ..circuit import BlockAssign, BlockCond
+from ..primitive import PrimIndex
+from ..visitor import visitor
 from .templates import VerilogTemplates
 
 
@@ -131,7 +132,8 @@ class Verilog(VerilogTemplates):
 
     def _prepare(self):
         self.io_vecs = [
-            prim for prim in self.module_data.io_prims if prim.dimensions]
+            prim for prim in self.module_data.io_prims
+            if prim.dimensions and not prim.direction == 'inout']
 
         self.non_io_storage = [
             prim for prim in self.module_data.storage_prims
@@ -168,7 +170,7 @@ class Verilog(VerilogTemplates):
                 if (
                         lvalue in io_set and
                         rvalue in submodule_io_set and
-                        rvalue.direction in ['output', 'inout'] and
+                        rvalue.direction == 'output' and
                         not lvalue.dimensions and
                         not rvalue.dimensions):
                     self.replace_prims[rvalue] = lvalue
@@ -180,6 +182,8 @@ class Verilog(VerilogTemplates):
                 else:
                     self._prepare_expr(rvalue)
                     self.assigns.append((lvalue, rvalue))
+
+        self._prepare_inout()
 
         self.submodule_io = [
             prim for prim in self.submodule_io
@@ -242,6 +246,43 @@ class Verilog(VerilogTemplates):
 
             if not self._expr_is_simple(expr):
                 self.read_prims.add(expr)
+
+    def _prepare_inout(self):
+        for port in self.module_data.io_prims:
+            if port.dimensions and port.direction == 'inout':
+                indices = product(*map(range, reversed(port.dimensions)))
+                suffix_fmt = '_%i' * len(port.dimensions)
+
+                name = self.names.name_prim(port)
+
+                for index in indices:
+                    indexed_port = port
+                    for dim_index in index:
+                        indexed_port = PrimIndex(dim_index, indexed_port)
+                    self.names.prim_to_name[indexed_port] = (
+                        name + suffix_fmt % index)
+                    self.named_prims.add(indexed_port)
+
+        for value_a, value_b in self.circuit.inout:
+            if not self._expr_is_inout_port_of(value_a, self.submodule_io):
+                value_a, value_b = value_b, value_a
+
+            if not self._expr_is_inout_port_of(value_a, self.submodule_io):
+                raise RuntimeError(
+                    'inout connection between %r and %r not supported' %
+                    (value_a, value_b))
+
+            value_a = value_a.simplify_read()
+            value_b = value_b.simplify_read()
+
+            if value_a in self.replace_prims:
+                raise RuntimeError(
+                    'inout connections of more than two singals'
+                    ' (%r, %r and %r) are not supported' %
+                    (value_a, self.replace_prims[value_a], value_b)
+                )
+
+            self.replace_prims[value_a] = value_b
 
     def _emit(self):
         self._emit_io_ports()
@@ -356,9 +397,6 @@ class Verilog(VerilogTemplates):
                         'assign ',
                         name, suffix_fmt % index, ' = ',
                         name, index_fmt % index, ';')
-                elif port.direction == 'inout':
-                    raise RuntimeError(
-                        'inout vector io ports are not supported')
         self._writeln()
 
     def _emit_storage_decls(self):
@@ -430,17 +468,23 @@ class Verilog(VerilogTemplates):
                     indices = product(*map(range, reversed(port.dimensions)))
 
                     suffix_fmt = '_%i' * len(port.dimensions)
-                    index_fmt = '[%i]' * len(port.dimensions)
 
                     replaced_port = self.replace_prims.get(port, port)
 
                     for last_index, index in _mark_last(indices):
                         sep = '' if last_port and last_index else ','
-                        self._writeln(
+                        self._write(
                             '.', submodule_data.names.name_prim(port),
-                            suffix_fmt % index,
-                            '(', self.names.name_prim(replaced_port),
-                            index_fmt % index, ')', sep)
+                            suffix_fmt % index, '(')
+
+                        indexed_port = port
+                        for dim_index in index:
+                            indexed_port = PrimIndex(dim_index, indexed_port)
+                        replaced_port = self.replace_prims.get(
+                            indexed_port, indexed_port)
+
+                        self._emit_expr(replaced_port)
+                        self._writeln(')', sep)
                 self.indent -= 1
                 self._writeln(');')
             else:

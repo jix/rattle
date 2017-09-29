@@ -1,22 +1,24 @@
-from .type import SignalType
-from ..signal import Signal
+from .type import SignalType, SignalTypeMeta
+from ..signal import Signal, Output
+from ..slice import dispatch_getitem
+from ..primitive import *
 
 
-class InOut(SignalType):
-    def __init__(self, contained_type):
+class InOutType(SignalType, metaclass=SignalTypeMeta):
+    def __init__(self, width=1):
         super().__init__()
-        self.__contained_type = contained_type
+        self.__width = width
 
     def __repr__(self):
-        return "InOut(%r)" % self.contained_type
+        return "InOutType(%r)" % self.width
 
     @property
-    def contained_type(self):
-        return self.__contained_type
+    def width(self):
+        return self.__width
 
     @property
     def _signature_tuple(self):
-        return (type(self), self.contained_type)
+        return (type(self), self.width)
 
     @property
     def _signal_class(self):
@@ -24,19 +26,23 @@ class InOut(SignalType):
 
     @property
     def _prim_shape(self):
-        return {
-            key: ('inout', *shape)
-            for key, (flipped, *shape)
-            in self.contained_type._prim_shape.items()}
+        return {(): ('inout', self.width)}
 
     def _unpack(self, unpacker):
         raise RuntimeError('cannot unpack InOut signal type')
 
     def _initialize_reg_value(self, reg):
-        raise RuntimeError('cannot initialize InOut Reg')
+        pass
 
 
 class InOutSignal(Signal):
+    @property
+    def width(self):
+        return self.signal_type.width
+
+    def __len__(self):
+        return self.width
+
     @property
     def value(self):
         raise RuntimeError('cannot get InOut signal value')
@@ -46,3 +52,26 @@ class InOutSignal(Signal):
 
     def _pack(self, packer):
         raise RuntimeError('cannot pack InOut signal type')
+
+    __getitem__ = dispatch_getitem
+
+    def _getitem_all(self):
+        return self
+
+    def _getitem_const_index(self, index):
+        return InOutType()._from_prims({
+            (): PrimSlice(index, 1, self._prim())})
+
+    def _getitem_const_slice(self, start, length):
+        return InOutType(length)._from_prims({
+            (): PrimSlice(start, length, self._prim())})
+
+
+def InOut(width=1):
+    return Output(InOutType(width))
+
+
+__all__ = [
+    'InOutType',
+    'InOut',
+]

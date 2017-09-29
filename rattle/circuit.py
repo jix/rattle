@@ -10,6 +10,7 @@ class Circuit:
         self.async_reset = OrderedDict()
         self.sync_reset = OrderedDict()
         self.initial = OrderedDict()
+        self.inout = []
 
         self.clocked_storage = {}
 
@@ -58,6 +59,9 @@ class Circuit:
         except KeyError:
             block = self.initial[storage] = Block()
         block.add_assignment(storage, lvalue, (), rvalue)
+
+    def add_inout(self, lvalue, rvalue):
+        self.inout.append((lvalue, rvalue))
 
     @staticmethod
     def _opt_passes():

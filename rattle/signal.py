@@ -2,12 +2,13 @@ import abc
 from itertools import product
 from . import context
 from .primitive import (
-    PrimStorage, PrimReg, PrimConst, PrimTable, PrimIndex, PrimEq, PrimAnd)
+    PrimStorage, PrimReg, PrimInOut, PrimConst, PrimTable, PrimIndex, PrimEq,
+    PrimAnd)
 from .bitvec import BitVec
 from .bitmath import log2up
 from .error import (
     ValueNotAvailable, InvalidSignalRead, InvalidSignalAssignment,
-    SignalNotTraceable, ConversionNotImplemented)
+    SignalNotTraceable, ConversionNotImplemented, UnsupportedInOutUse)
 
 
 class Signal(metaclass=abc.ABCMeta):
@@ -66,9 +67,15 @@ class Signal(metaclass=abc.ABCMeta):
             if flip is True:
                 lvalue, rvalue = rvalue, lvalue
 
-            lvalue.lower_and_add_to_circuit(
-                condition, rvalue,
-                circuit=module_data.circuit, reset=is_reset)
+            if flip == 'inout':
+                lvalue.lower_inout_and_add_to_circuit(
+                    condition, rvalue,
+                    circuit=module_data.circuit, reset=is_reset
+                )
+            else:
+                lvalue.lower_and_add_to_circuit(
+                    condition, rvalue,
+                    circuit=module_data.circuit, reset=is_reset)
 
     def _access(self, write=False):
         module = context.current().module
@@ -247,7 +254,11 @@ def _make_storage(signal_type, direction=None, wrap_prims=None):
         flip, width, *dimensions = shape[key]
 
         if flip == 'inout':
-            prim_direction = 'inout' if direction is not None else None
+            if direction is None:
+                # TODO Error type
+                raise UnsupportedInOutUse(
+                    "InOut signals are only allowed within module ports")
+            prim_direction = 'inout'
         else:
             prim_direction = flipped if flip else direction
         prim = PrimStorage(
@@ -263,6 +274,8 @@ def _make_storage(signal_type, direction=None, wrap_prims=None):
             storage.append(prim)
             if prim_direction == 'input':
                 prims[key] = _wrap_assign_x_parent(module, prim)
+            elif prim_direction == 'inout':
+                prims[key] = PrimInOut(prim)
             elif wrap_prims is None:
                 prims[key] = prim
             else:

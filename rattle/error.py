@@ -36,3 +36,7 @@ class SignalNotTraceable(RuntimeError):
 
 class SignalRedefined(RuntimeError):
     pass
+
+
+class UnsupportedInOutUse(RuntimeError):
+    pass

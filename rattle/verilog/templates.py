@@ -160,3 +160,17 @@ class VerilogTemplates:
     @_expr_is_simple.on(PrimConst)
     def _expr_is_simple(self, expr):
         return True
+
+    @visitor
+    def _expr_is_inout_port_of(self, expr, port_set):
+        return False
+
+    @_expr_is_inout_port_of.on(PrimInOut)
+    def _expr_is_inout_port_of(self, expr, port_set):
+        return expr.x in port_set
+
+    @_expr_is_inout_port_of.on(PrimIndex)
+    def _expr_is_inout_port_of(self, expr, port_set):
+        if not isinstance(expr.index, PrimConst):
+            return False
+        return self._expr_is_inout_port_of(expr.x, port_set)
