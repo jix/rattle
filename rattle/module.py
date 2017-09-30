@@ -37,6 +37,7 @@ class ModuleData:
 
 
 class Module(metaclass=ModuleMeta):
+    # pylint: disable=no-member
     def __repr__(self):
         return "%s()" % type(self).__name__
 

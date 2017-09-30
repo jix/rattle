@@ -51,7 +51,7 @@ def check_slice(width, index):
 def dispatch_getitem(self, index):
     slice_type, *params = check_slice(len(self), index)
 
-    def error_fn(*args):
+    def error_fn(*_args):
         raise TypeError('unsupported index type')
 
     return getattr(self, '_getitem_' + slice_type, error_fn)(*params)

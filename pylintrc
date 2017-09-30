@@ -1,0 +1,30 @@
+[MESSAGES CONTROL]
+disable=
+    missing-docstring,
+    unused-wildcard-import,
+    fixme,
+    locally-disabled,
+    protected-access,
+    too-many-branches,
+    invalid-slice-index,
+    unsubscriptable-object,
+    no-else-return,
+    attribute-defined-outside-init,
+    too-many-instance-attributes,
+    too-many-statements,
+    too-few-public-methods,
+    invalid-name,
+    no-member, # TODO this should be avoided
+
+[REPORTS]
+msg-template={path}:{line}:{column}: {msg} ({symbol})
+score=no
+
+[VARIABLES]
+dummy-variables-rgx=^_
+
+[IMPORTS]
+allow-wildcard-with-all=yes
+
+[DESIGN]
+max-args=6

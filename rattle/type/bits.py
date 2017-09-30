@@ -116,14 +116,16 @@ class BitsLikeSignal(BasicSignal):
     def __invert__(self):
         return Bits(self.width)._from_prim(PrimNot(self._prim()))
 
-    def _binary_bitop(self, other, op, result_type=None):
+    def _binary_bitop(self, other, op, result_override=None):
         try:
             other = self.signal_type.convert(other, implicit=True)
         except ConversionNotImplemented:
             return NotImplemented
 
-        if result_type is None:
+        if result_override is None:
             result_type = self.signal_type
+        else:
+            result_type = result_override
 
         return result_type._from_prim(
             op(self._prim(), other._prim()))

@@ -26,7 +26,7 @@ class PrimMeta(abc.ABCMeta):
         if signal.width == 0:
             return PrimConst(BitVec(0, 0))
 
-        def raise_fn(prim):
+        def raise_fn(_prim):
             raise ValueNotAvailable
 
         def value_fn(prim):
@@ -46,7 +46,7 @@ class PrimSignal(metaclass=PrimMeta):
         self.dimensions = tuple(dimensions)
 
     def eval(self, values):
-        # pylint: disable=no-self-use
+        # pylint: disable=no-self-use,unused-argument
         raise ValueNotAvailable  # TODO Message
 
     def simplify(self):
@@ -131,15 +131,18 @@ class PrimSignal(metaclass=PrimMeta):
             'translated into simple lvalues')
 
     def add_to_circuit(self, circuit, lvalue, condition, rvalue):
+        # pylint: disable=unused-argument
         raise RuntimeError(
             'primitive signal %r is not a valid storage node' % self)
 
     def add_reset_to_circuit(self, circuit, lvalue, rvalue):
+        # pylint: disable=unused-argument
         # TODO This is not just an internal error, make nice
         raise RuntimeError(
             'primitive signal %r is not a valid storage node for reset' % self)
 
     def poke_to_sim(self, sim, lvalue, rvalue, xpoke):
+        # pylint: disable=unused-argument
         raise RuntimeError(
             'primitive signal %r cannot be written in simulation' % self)
 
@@ -152,6 +155,7 @@ class PrimSignal(metaclass=PrimMeta):
         pass
 
     def map(self, map_fn):
+        # pylint: disable=unused-argument
         return self
 
 

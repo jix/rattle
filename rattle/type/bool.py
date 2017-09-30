@@ -38,6 +38,7 @@ Bool = BoolType()
 
 
 def _raise(cls):
+    # pylint: disable=unused-argument
     raise RuntimeError('use Bool instead of BoolType()')
 
 

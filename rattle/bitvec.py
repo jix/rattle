@@ -305,7 +305,7 @@ class XClass:
 X = XClass()
 
 
-def _raise(cls):
+def _raise(cls):  # pylint: disable=unused-argument
     raise RuntimeError('use X instead of XClass()')
 
 

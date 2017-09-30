@@ -102,11 +102,12 @@ class Verilog(VerilogTemplates):
 
     @_attribute.on(SimulationOnly)
     def _attribute(self, attribute):
-        # pylint: disable=no-self-use
+        # pylint: disable=no-self-use, unused-argument
         raise RuntimeError('Module %r is only for simulation' % self.module)
 
     @_attribute.on(DoNotGenerate)
     def _attribute(self, attribute):
+        # pylint: disable=unused-argument
         self.do_not_generate = True
 
     @_attribute.on(ModuleName)

@@ -401,6 +401,7 @@ class EnumSelector:
         self._when_context = None
 
     def _const_signal(self, signal_type, *, implicit):
+        # pylint: disable=unused-argument
         if signal_type == Bool:
             return self._signal.in_state(self._state)
         else:

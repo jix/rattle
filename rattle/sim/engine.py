@@ -121,6 +121,7 @@ class SimEngine:
             enqueues.append(enqueue)
 
     def _add_combinational(self, storage, block):
+        # pylint: disable=unused-argument
         enqueue = (
             self._combinational_queue, self._eval_combinational,
             block)
@@ -138,6 +139,7 @@ class SimEngine:
             enqueues.append(enqueue)
 
     def _add_initial(self, storage, block):
+        # pylint: disable=unused-argument
         self._initial_blocks.append(block)
 
     @staticmethod
@@ -398,7 +400,7 @@ class SimEngine:
             callbacks = self._user_callbacks[storage] = OrderedDict()
         callbacks[key] = callback
 
-    def remove_callback(self, storage, key, callback):
+    def remove_callback(self, storage, key):
         try:
             del self._user_callbacks[storage][key]
             return True

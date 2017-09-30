@@ -24,6 +24,14 @@ class Int(BitsLike, metaclass=SignalTypeMeta):
         else:
             return super()._generic_const_signal(value, implicit=implicit)
 
+    @abc.abstractproperty
+    def min_value(self):
+        pass
+
+    @abc.abstractproperty
+    def max_value(self):
+        pass
+
     @staticmethod
     def from_value_range(min_value, max_value):
         width = max_value.bit_length()
@@ -81,6 +89,7 @@ class IntSignal(BitsLikeSignal):
             PrimAnd(a._prim(), b._prim()))
 
     def _binary_bitop(self, other, op, result_override=None, signed_op=None):
+        # pylint: disable=arguments-differ
         try:
             other = Int.generic_convert(other, implicit=True)
         except ConversionNotImplemented:

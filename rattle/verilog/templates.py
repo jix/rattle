@@ -137,10 +137,12 @@ class VerilogTemplates:
 
     @visitor
     def _expr_is_simple(self, expr):
+        # pylint: disable=unused-argument
         return False
 
     @_expr_is_simple.on(PrimStorage)
     def _expr_is_simple(self, expr):
+        # pylint: disable=unused-argument
         return True
 
     @_expr_is_simple.on(PrimIndex)
@@ -159,10 +161,12 @@ class VerilogTemplates:
 
     @_expr_is_simple.on(PrimConst)
     def _expr_is_simple(self, expr):
+        # pylint: disable=unused-argument
         return True
 
     @visitor
     def _expr_is_inout_port_of(self, expr, port_set):
+        # pylint: disable=unused-argument
         return False
 
     @_expr_is_inout_port_of.on(PrimInOut)

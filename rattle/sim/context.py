@@ -261,10 +261,12 @@ class SimContext:
         self._new_events.clear()
 
     def _change_callback(self, event, storage):
+        # pylint: disable=unused-argument
         # TODO remove unwatched events
         self._potential_changes[event] = event
 
     def _edge_callback(self, event, storage):
+        # pylint: disable=unused-argument
         # TODO remove unwatched events
         self._potential_edges[event] = event
 

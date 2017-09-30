@@ -98,15 +98,16 @@ class SignalType(metaclass=SignalTypeMeta):
             return result
 
     def _convert(self, signal, *, implicit):
-        # pylint: disable=no-self-use, unused-variable
+        # pylint: disable=no-self-use, unused-argument
         return NotImplemented
 
     @classmethod
     def _generic_convert(cls, signal, *, implicit):
-        # pylint: disable=unused-variable
+        # pylint: disable=unused-argument
         return NotImplemented
 
     def _const_signal(self, value, *, implicit):
+        # pylint: disable=unused-argument
         if isinstance(value, XClass):
             return self._xval()
         else:
@@ -114,7 +115,7 @@ class SignalType(metaclass=SignalTypeMeta):
 
     @classmethod
     def _generic_const_signal(cls, value, *, implicit):
-        # pylint: disable=unused-variable
+        # pylint: disable=unused-argument
         return NotImplemented
 
     def __or__(self, other):

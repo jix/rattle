@@ -27,6 +27,7 @@ class ReduceBitWidths:
 
     @visitor
     def _update_subexpr_width(self, rvalue, width):
+        # pylint: disable=unused-argument
         for subexpr in rvalue:
             self._needs_width(subexpr, subexpr.width)
 

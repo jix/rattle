@@ -115,19 +115,19 @@ class Signal(metaclass=abc.ABCMeta):
             raise TypeError('Signal object is not subscriptable')
 
     def _convert(self, signal_type, *, implicit):
-        # pylint: disable=no-self-use, unused-variable
+        # pylint: disable=no-self-use, unused-argument
         return NotImplemented
 
     def _generic_convert(self, signal_type_class, *, implicit):
-        # pylint: disable=no-self-use, unused-variable
+        # pylint: disable=no-self-use, unused-argument
         return NotImplemented
 
     def _const_signal(self, signal_type, *, implicit):
-        # pylint: disable=no-self-use, unused-variable
+        # pylint: disable=no-self-use, unused-argument
         return NotImplemented
 
     def _generic_const_signal(self, signal_type_class, *, implicit):
-        # pylint: disable=no-self-use, unused-variable
+        # pylint: disable=no-self-use, unused-argument
         return NotImplemented
 
     def as_implicit(self, name):
@@ -151,7 +151,7 @@ class Signal(metaclass=abc.ABCMeta):
             return current_context.sim._engine.peek(
                 self._prim(key).simplify_read())
 
-        def raise_fn(prim):
+        def raise_fn(_prim):
             raise ValueNotAvailable  # TODO Message
 
         return self._prim(key).eval(raise_fn)
@@ -168,6 +168,7 @@ class Signal(metaclass=abc.ABCMeta):
         return self
 
     def _add_to_trace(self, trace, scope, name):
+        # pylint: disable=unused-argument
         raise SignalNotTraceable(
             'signals of type %r cannot be traced' % self.signal_type)
 
@@ -315,7 +316,7 @@ def _make_reg(signal_type, *, init, clk=None, direction=None):
     else:
         en_prim = None
 
-    def wrap_reg(module, prim):
+    def wrap_reg(_module, prim):
         return PrimReg(clk_prim, en_prim, reset_prim, clock_type.reset, prim)
 
     reg = _make_storage(signal_type, direction=direction, wrap_prims=wrap_reg)
