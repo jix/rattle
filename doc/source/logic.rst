@@ -50,6 +50,9 @@ Signal Types
 Rattle comes with a type system for logic values.
 Signal types are *instances* of the :class:`SignalType` class.
 Subclasses of :class:`SignalType` represent a family of related types.
+For each subclass of :class:`SignalType` there is a corresponding subclass of
+:class:`rattle.signal.Signal` that extends the supported operations on signals
+of such a type.
 
 The following signal types are built in:
 
@@ -79,3 +82,21 @@ The following signal types are built in:
     .. automethod:: generic_convert
     .. automethod:: common
     .. automethod:: unpack
+
+Bool
+^^^^
+
+.. py:module:: rattle.type.bool
+
+:data:`Bool` is the simplest signal type.
+It consists of only a single bit.
+
+.. autodata:: Bool
+.. autoclass:: BoolType
+
+Signals of the signal type :data:`Bool` are instances of :class:`BoolSignal` a
+subclass of :class:`rattle.signal.Signal`.
+
+.. autoclass:: BoolSignal()
+
+    .. automethod:: repeat

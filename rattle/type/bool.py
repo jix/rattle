@@ -1,3 +1,4 @@
+"""Boolean signals."""
 from .basic import BasicType, BasicSignal
 from ..primitive import *
 from ..bitvec import bv, xbool
@@ -5,6 +6,10 @@ from ..error import ConversionNotImplemented
 
 
 class BoolType(BasicType):
+    """Boolean signal type.
+
+    Use the existing instance :data:`Bool`.
+    """
     def __repr__(self):
         return "Bool"
 
@@ -35,6 +40,9 @@ class BoolType(BasicType):
 
 
 Bool = BoolType()
+"""Boolean signal type.
+
+Only instance of :class:`BoolType`."""
 
 
 def _raise(cls):
@@ -46,6 +54,10 @@ BoolType.__new__ = _raise
 
 
 class BoolSignal(BasicSignal):
+    """Boolean signal.
+
+    Implements the usual boolean logic operators.
+    """
     def __invert__(self):
         return Bool._from_prim(PrimNot(self._prim()))
 
@@ -76,6 +88,15 @@ class BoolSignal(BasicSignal):
         return self.__xor__(other)
 
     def repeat(self, count):
+        """Repeat a single bit.
+
+        Args:
+            count (int): number of repetitions.
+
+        Returns:
+            Bits(count): self repeated count times.
+        """
+
         from .bits import Bits
         if not isinstance(count, int):
             raise TypeError('repetition count must be an integer')
