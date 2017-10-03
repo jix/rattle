@@ -41,3 +41,41 @@ functions are provided by the :mod:`rattle.bitvec` module.
     .. automethod:: values
 
 .. autofunction:: bv
+
+Signal Types
+------------
+
+.. py:module:: rattle.type.type
+
+Rattle comes with a type system for logic values.
+Signal types are *instances* of the :class:`SignalType` class.
+Subclasses of :class:`SignalType` represent a family of related types.
+
+The following signal types are built in:
+
+*   ``Bool``, a single bit.
+*   ``Bits(width)``, a fixed width vector of bits.
+*   ``UInt(width)``, a fixed width unsigned integer.
+*   ``SInt(width)``, a fixed width signed integer.
+*   ``Vec(length, element_type)``, a fixed length vector containing elements of
+    another type.
+*   ``Clock(...)``, a clock signal with an optional bundled reset and enable
+    signal.
+*   ``Bundle(...)``, an aggregate of multiple signals.
+*   ``Enum(...)``, a set of possible values, each optionally with bundled
+    signals.
+*   ``Flip(signal_type)``, a wrapper that switches the direction of the
+    contained type when used in the context of a module port.
+*   ``Packed(signal_type)``, a wrapper that ensures the contained type is
+    represented as a single bit vector for synthesis.
+*   ``InOutType(width)``, used to represent bidirectional/tristate ports.
+    These are not supported by Rattle, but this opaque placeholder type allows
+    connecting non-Rattle interfaces that do.
+
+.. autoclass:: SignalType
+
+    .. autoattribute:: contains_flipped
+    .. automethod:: convert
+    .. automethod:: generic_convert
+    .. automethod:: common
+    .. automethod:: unpack
