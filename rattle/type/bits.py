@@ -1,3 +1,4 @@
+"""Fixed-width bit-vectors."""
 from .type import SignalTypeMeta
 from .basic import BasicType, BasicSignal
 from ..primitive import *
@@ -8,6 +9,7 @@ from ..signal import Signal
 
 
 class BitsLike(BasicType, metaclass=SignalTypeMeta):
+    """Abstract superclass for Bits and Int."""
     # pylint: disable=abstract-method
     def __init__(self, width):
         super().__init__()
@@ -19,6 +21,7 @@ class BitsLike(BasicType, metaclass=SignalTypeMeta):
 
     @property
     def width(self):
+        """Bit width."""
         return self.__width
 
     def __repr__(self):
@@ -99,14 +102,31 @@ class BitsLike(BasicType, metaclass=SignalTypeMeta):
 
 
 class BitsLikeSignal(BasicSignal):
+    """Signal that supports some bit-vector operations.
+
+    In addition to the named methods these signals support:
+
+    * Broadcasted boolean logic using python operators.
+    * MSB first concatenation using the ``@`` (``__matmul__``) operator.
+    * Indexing and slicing.
+
+    """
     @property
     def width(self):
+        """Bit width."""
         return self.signal_type.width
 
     def __len__(self):
         return self.width
 
     def concat(self, *others):
+        """Concatenate with other signals.
+
+        The concatenation order is LSB first, starting with this signal.
+        Use the ``@`` operator for MSB first concatenation.
+
+        The result is always of signal type :class:`Bits`.
+        """
         return Bits.concat(self, *others)
 
     def __matmul__(self, other):
@@ -149,6 +169,13 @@ class BitsLikeSignal(BasicSignal):
         return self.__xor__(other)
 
     def extend(self, width):
+        """Add bits on the MSB side.
+
+        The values of the new bits depend on the concrete signal type.
+
+        Args:
+            width (int): the width of the resulting vector.
+        """
         if not isinstance(width, int):
             raise TypeError('signal width must be an integer')
         if width < self.width:
@@ -159,6 +186,11 @@ class BitsLikeSignal(BasicSignal):
             return self._extend_unchecked(width)
 
     def truncate(self, width):
+        """Remove bits on the MSB side.
+
+        Args:
+            width (int): the width of the resulting vector.
+        """
         if not isinstance(width, int):
             raise TypeError('signal width must be an integer')
         if width > self.width:
@@ -169,6 +201,14 @@ class BitsLikeSignal(BasicSignal):
             return self._truncate_unchecked(width)
 
     def resize(self, width):
+        """Extend or truncate.
+
+        Extend or truncate, depending on whether width is larger or smaller
+        than this signal's width.
+
+        Args:
+            width (int): the width of the resulting vector.
+        """
         if not isinstance(width, int):
             raise TypeError('signal width must be an integer')
         elif width < self.width:
@@ -185,6 +225,14 @@ class BitsLikeSignal(BasicSignal):
             PrimSlice(0, width, self._prim()))
 
     def repeat(self, count):
+        """Concatenate multiple copies.
+
+        This concatenates multiple copies of the same signal.
+        The result is always of signal type :class:`Bits`.
+
+        Args:
+            count (int): number of repetitions.
+        """
         if not isinstance(count, int):
             raise TypeError('repetition count must be an integer')
         elif count < 0:
@@ -224,9 +272,17 @@ class BitsLikeSignal(BasicSignal):
 
 
 class Bits(BitsLike):
+    """Signal type for fixed-width bit-vectors.
+
+    Subclass of :class:`BitsLike`.
+    """
     @classmethod
     def concat(cls, *signals):
-        # TODO Document lsb first order
+        """Concatenate bit-vectors.
+
+        The concatenation order is LSB first.
+        Use the ``@`` operator for MSB first concatenation.
+        """
         # TODO Allow concat lvalue?
         signals = [
             Bits.generic_convert(signal, implicit=True) for signal in signals]
@@ -244,11 +300,18 @@ class Bits(BitsLike):
 
 
 class BitsSignal(BitsLikeSignal):
+    """Bit-vector signal.
+
+    Most operations are inherited from :class:`BitsLike`.
+    This also supports bit-shifts by constant or UInt signal amounts.
+    """
     def as_uint(self):
+        """Convert into a UInt signal of the same width."""
         from .int import UInt
         return UInt(self.width)._from_prim(self._prim())
 
     def as_sint(self):
+        """Convert into a SInt signal of the same width."""
         from .int import SInt
         return SInt(self.width)._from_prim(self._prim())
 
@@ -267,4 +330,8 @@ class BitsSignal(BitsLikeSignal):
         return self._shift_op(shift, PrimShiftRight)
 
     def arith_rshift(self, shift):
+        """Arithmetic right-shift.
+
+        A right shift that shifts in copies of the MSB instead of zeros.
+        """
         return self._shift_op(shift, PrimArithShiftRight)

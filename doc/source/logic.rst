@@ -47,7 +47,7 @@ Signal Types
 
 .. py:module:: rattle.type.type
 
-Rattle comes with a type system for logic values.
+Rattle comes with a type system for signal values.
 Signal types are *instances* of the :class:`SignalType` class.
 Subclasses of :class:`SignalType` represent a family of related types.
 For each subclass of :class:`SignalType` there is a corresponding subclass of
@@ -100,3 +100,49 @@ subclass of :class:`rattle.signal.Signal`.
 .. autoclass:: BoolSignal()
 
     .. automethod:: repeat
+
+Bits, UInt and SInt
+^^^^^^^^^^^^^^^^^^^
+
+Rattle differentiates between fixed-width integers (:class:`rattle.type.int.Int`)
+and uninterpreted bit-vectors (:class:`rattle.type.bits.Bits`).
+Operations on integers always return a signal of a large enough type to
+represent all possible results.
+They also truncate silently when assigning to shorter integer or bit-vector
+signals.
+In combination this means that you don't have to worry about unexpected
+truncations within an expression, but also don't have to litter your code with
+lots of explicit truncations.
+Bit-vectors never silently truncate.
+
+.. py:module:: rattle.type.bits
+
+As fixed-width integers and bit-vectors share a lot of properties and
+operations, there is a common superclass for both signal types:
+:class:`BitsLike`.
+
+.. autoclass:: BitsLike
+
+    .. autoattribute:: width
+
+.. autoclass:: BitsLikeSignal()
+
+    .. autoattribute:: width
+    .. automethod:: concat
+    .. automethod:: extend
+    .. automethod:: truncate
+    .. automethod:: resize
+    .. automethod:: repeat
+
+
+Bit-vectors use the signal type :class:`Bits`.
+
+.. autoclass:: Bits
+
+    .. automethod:: concat
+
+.. autoclass:: BitsSignal()
+
+    .. automethod:: arith_rshift
+    .. automethod:: as_uint
+    .. automethod:: as_sint
