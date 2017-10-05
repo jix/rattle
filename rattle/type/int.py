@@ -1,3 +1,4 @@
+"""Fixed width integers."""
 import abc
 
 from .type import SignalTypeMeta
@@ -10,8 +11,15 @@ from ..error import ConversionNotImplemented
 
 
 class Int(BitsLike, metaclass=SignalTypeMeta):
+    """Fixed-width integers.
+
+    Abstract superclass of :class:`UInt` and :class:`SInt`.
+    Subclass of :class:`BitsLike`.
+    """
+
     @abc.abstractproperty
     def signed(self):
+        """Whether the MSB is interpreted as a sign bit."""
         pass
 
     @classmethod
@@ -26,14 +34,25 @@ class Int(BitsLike, metaclass=SignalTypeMeta):
 
     @abc.abstractproperty
     def min_value(self):
+        """Smallest representable value."""
         pass
 
     @abc.abstractproperty
     def max_value(self):
+        """Largest representable value."""
         pass
 
     @staticmethod
     def from_value_range(min_value, max_value):
+        """Return a signal type that can represent a given range.
+
+        Args:
+            min_value (int): Smallest value required to be representable.
+            max_value (int): Largest value required to be representable.
+
+        Returns:
+            SignalType: An UInt or SInt of appropriate width.
+        """
         width = max_value.bit_length()
         if min_value < 0:
             width = max(width, (~min_value).bit_length()) + 1
@@ -51,6 +70,14 @@ class Int(BitsLike, metaclass=SignalTypeMeta):
 
 
 class IntSignal(BitsLikeSignal):
+    """Fixed-width integer signal.
+
+    Inherits operations from :class:`rattle.type.bits.BitsLikeSignal`.
+    This also provides the following operations using Python operators:
+
+    *   Arithmetic (except devision).
+    *   Integer comparison, supports mixing SInt and UInt types.
+    """
     def _convert(self, signal_type, *, implicit):
         if signal_type.__class__ == Bits:
             return self.resize(signal_type.width).as_bits()
@@ -64,6 +91,7 @@ class IntSignal(BitsLikeSignal):
         return super()._generic_convert(signal_type_class, implicit=implicit)
 
     def as_bits(self):
+        """Convert into a Bits signal of the same width."""
         return Bits(self.width)._from_prim(self._prim())
 
     def __and__(self, other):
@@ -252,6 +280,7 @@ class IntSignal(BitsLikeSignal):
 
 
 class UInt(Int):
+    """Fixed-width unsigned integer signal type."""
     @property
     def signed(self):
         return False
@@ -297,6 +326,7 @@ class UInt(Int):
 
 
 class UIntSignal(IntSignal):
+    """Fixed-width unsigned integer signal."""
     def _convert(self, signal_type, *, implicit):
         if signal_type.__class__ == SInt:
             return self.resize(signal_type.width).as_bits().as_sint()
@@ -342,6 +372,7 @@ class UIntSignal(IntSignal):
 
 
 class SInt(Int):
+    """Fixed-width signed integer signal type."""
     def __init__(self, width):
         super().__init__(width)
         if width < 1:
@@ -400,6 +431,7 @@ class SInt(Int):
 
 
 class SIntSignal(IntSignal):
+    """Fixed-width signed integer signal."""
     def _convert(self, signal_type, *, implicit):
         if signal_type.__class__ == UInt:
             return self.resize(signal_type.width).as_bits().as_uint()

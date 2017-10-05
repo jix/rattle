@@ -146,3 +146,35 @@ Bit-vectors use the signal type :class:`Bits`.
     .. automethod:: arith_rshift
     .. automethod:: as_uint
     .. automethod:: as_sint
+
+.. py:module:: rattle.type.int
+
+Fixed-width integers come in signed and unsigned forms.
+Signed integers use the signal type :class:`SInt`, unsigned integers use
+:class:`UInt`.
+Both have a common superclass :class:`Int`.
+
+.. autoclass:: Int
+
+    .. autoattribute:: signed
+    .. autoattribute:: min_value
+    .. autoattribute:: max_value
+    .. automethod:: from_value_range
+
+.. autoclass:: IntSignal()
+
+    .. automethod:: as_bits
+
+.. autoclass:: UInt
+.. autoclass:: UIntSignal()
+
+    .. method:: extend(width)
+
+        Add zero bits on the MSB side.
+
+.. autoclass:: SInt
+.. autoclass:: SIntSignal()
+
+    .. method:: extend(width)
+
+        Add copies of the sign bit on the MSB side.
