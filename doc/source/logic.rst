@@ -62,10 +62,10 @@ The following signal types are built in:
 *   ``SInt(width)``, a fixed width signed integer.
 *   ``Vec(length, element_type)``, a fixed length vector containing elements of
     another type.
-*   ``Clock(...)``, a clock signal with an optional bundled reset and enable
-    signal.
 *   ``Bundle(...)``, an aggregate of multiple signals.
 *   ``Enum(...)``, a set of possible values, each optionally with bundled
+*   ``Clock(...)``, a clock signal with an optional bundled reset and enable
+    signal.
     signals.
 *   ``Flip(signal_type)``, a wrapper that switches the direction of the
     contained type when used in the context of a module port.
@@ -178,3 +178,27 @@ Both have a common superclass :class:`Int`.
     .. method:: extend(width)
 
         Add copies of the sign bit on the MSB side.
+
+Vec
+^^^
+
+.. py:module:: rattle.type.vec
+
+The :class:`Vec` signal type represents a fixed length homogeneous vector, i.e.
+several signals of the same signal type.
+It can be used to describe memories (ROM and RAM).
+Vector signals can be explicitly constructed using the :func:`vec` helper.
+
+.. autoclass:: Vec
+
+    .. automethod:: __init__
+    .. autoattribute:: element_type
+    .. autoattribute:: length
+
+.. autoclass:: VecSignal
+
+    .. autoattribute:: element_type
+
+.. autofunction:: vec
+
+.. autoclass:: VecHelper

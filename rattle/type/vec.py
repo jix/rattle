@@ -1,3 +1,4 @@
+"""Fixed length homogeneous vectors."""
 from .type import SignalType
 from ..signal import Signal
 from ..primitive import *
@@ -8,17 +9,28 @@ from ..error import InvalidSignalAssignment
 
 
 class Vec(SignalType):
+    """Fixed length homogeneous vector signal type."""
     def __init__(self, length, element_type):
+        """Create a vector signal type.
+
+        Args:
+            length (int): The number of elements in the vector.
+            element_type (SignalType): The signal type of the indivdual
+                elements.
+        """
+
         super().__init__()
         self.__element_type = element_type
         self.__length = length
 
     @property
     def element_type(self):
+        """Signal type of the indivdual elements."""
         return self.__element_type
 
     @property
     def length(self):
+        """Number of elements."""
         return self.__length
 
     def __repr__(self):
@@ -74,8 +86,13 @@ class Vec(SignalType):
 
 
 class VecSignal(Signal):
+    """Fixed length homogeneous vector signal.
+
+    Supports indexing and slicing using constants and indexing using signals.
+    """
     @property
     def element_type(self):
+        """Signal type of the indivdual elements."""
         return self.signal_type.element_type
 
     def __len__(self):
@@ -122,6 +139,12 @@ class VecSignal(Signal):
 
 
 class VecHelper:
+    """Helper to construct Vec signals from Python constants.
+
+    This is returned by the :func:`vec` function when some of the arguments are
+    Python constants.
+    It will implicitly convert to :class:`Vec` signals.
+    """
     def __init__(self, values):
         self._values = values
 
@@ -132,6 +155,10 @@ class VecHelper:
 
 
 def vec(*args):
+    """Construct a Vec signal by listing its elements.
+
+    When not all arguments are signals, this will return a class::`VecHelper`.
+    """
     if args and all(isinstance(signal, Signal) for signal in args):
         common_type = SignalType.common(signal.signal_type for signal in args)
         return Vec(len(args), common_type)[args]
